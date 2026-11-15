@@ -18,7 +18,7 @@ function paint() {
   const ini = esc((user.email || "?").charAt(0).toUpperCase());
   e.innerHTML = '<button class="av" id="av" aria-label="Conta">' + (user.photoURL ? '<img src="' + esc(user.photoURL) + '" referrerpolicy="no-referrer" alt="">' : ini) + "</button>"
     + (pop ? '<div class="pop"><b>' + (ready ? "☁ Sincronizado" : "☁ Sincronizando…") + '</b><span class="mut">' + esc(user.email || "") + "</span>" + (msg ? '<span style="color:#C0392B">' + esc(msg) + "</span>" : "") + '<button class="btn o" id="go">Sair</button></div>' : "");
-  document.getElementById("av").onclick = () => { pop = !pop; paint(); };
+  document.getElementById("av").onclick = ev => { ev.stopPropagation(); pop = !pop; paint(); };
   const go = document.getElementById("go");
   if (go) go.onclick = () => { pop = false; A.signOut(auth); };
 }

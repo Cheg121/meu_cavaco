@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Meu Cavaco</title>
+<script>try{var t=localStorage.getItem("cavaco-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -95,10 +96,12 @@ select{width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--li
 .hd{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;padding:14px 8px 14px 14px;color:var(--mut);font-size:20px;line-height:1}
 .num{color:var(--chord);font-weight:700;min-width:22px;text-align:center;font-size:15px}
 .ri.dragging{opacity:.65;border-color:var(--acc);box-shadow:0 6px 18px rgba(0,0,0,.3)}
+:root[data-theme="dark"]{--bg:#121A16;--card:#1B2620;--ink:#E6EEE7;--mut:#93A59A;--acc:#5FC79C;--onacc:#0B1510;--chord:#F0B24A;--line:#2B3A31;color-scheme:dark}
+.pkr{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;margin-top:6px}.pkr .fb{margin:0}
 </style>
 </head>
 <body>
-<header id="top"><button class="ib" id="mb" aria-label="Menu"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><span class="brand">Meu Cavaco</span><div id="cl"></div></header>
+<header id="top"><button class="ib" id="mb" aria-label="Menu"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><span class="brand">Meu Cavaco</span><button class="ib" id="tm" aria-label="Alternar tema claro/escuro" style="font-size:22px"></button><div id="cl"></div></header>
 <div id="sc"></div>
 <nav id="dr"><div class="t">Meu Cavaco</div><a href="#" data-r="">♪ Músicas</a><a href="#rep" data-r="rep">♫ Repertórios</a><a href="#acordes" data-r="acordes">🎸 Dicionário de acordes</a></nav>
 <main id="app"></main>
@@ -128,13 +131,15 @@ window.cavaco={onSave:null,paint:null,
     else if(/^#s-/.test(h)){var y=window.scrollY;route();window.scrollTo(0,y)}
   }};
 
-var CH=/^[A-G][#b]?(maj|min|dim|aug|sus|add|m|M|º|°|\+)?[0-9]*(M|maj|m|sus[24]?|add[0-9]+|dim|aug|[#b][0-9]+|\([^)]*\))*(\/[A-G][#b]?)?$/;
+var CH=/^[A-G][#b]?(maj|min|dim|aug|sus|add|m|M|º|°|\+)?[0-9]*(M|maj|m|sus[24]?|add[0-9]+|dim|aug|º|°|[#b+-][0-9]+|\([^)]*\))*(\/([A-G][#b]?|[0-9]+))?$/;
 function isChordLine(l){var t=l.trim().split(/\s+/);return l.trim()!==""&&t.every(function(x){return CH.test(x)})}
 function vars(n){var v=S.chords[n];return !v?[]:Array.isArray(v)?v:[v]}
 function chordNames(txt){var o=[];txt.split("\n").forEach(function(l){if(isChordLine(l))l.trim().split(/\s+/).forEach(function(c){if(o.indexOf(c)<0)o.push(c)})});return o}
+function occCount(t,n){var k=0;t.split("\n").forEach(function(l){if(isChordLine(l))l.trim().split(/\s+/).forEach(function(c){if(c===n)k++})});return k}
 function renderCifra(txt){
+  var cnt={};
   return txt.split("\n").map(function(l){
-    if(isChordLine(l))return '<span class="cl">'+l.replace(/\S+/g,function(m){return '<span class="c'+(vars(m).length?" k":"")+'" data-c="'+esc(m)+'">'+esc(m)+'</span>'})+'</span>';
+    if(isChordLine(l))return '<span class="cl">'+l.replace(/\S+/g,function(m){cnt[m]=(cnt[m]||0)+1;return '<span class="c'+(vars(m).length?" k":"")+'" data-c="'+esc(m)+'" data-o="'+cnt[m]+'">'+esc(m)+'</span>'})+'</span>';
     return esc(l);
   }).join("\n");
 }
@@ -149,10 +154,12 @@ function diagram(f,nums){
   var base=mx>5?mn:1,X=[30,63,96,129],g="",cy=function(v){return 40+(v-base+.5)*30};
   for(var i=0;i<4;i++)g+='<line x1="'+X[i]+'" y1="40" x2="'+X[i]+'" y2="190" stroke-width="2"/>';
   for(var r=0;r<=5;r++)g+='<line x1="30" y1="'+(40+r*30)+'" x2="129" y2="'+(40+r*30)+'" stroke-width="'+(r===0&&base===1?5:1.2)+'"/>';
-  if(f.bar){var bs=[0,1,2,3].filter(function(i){return f[i]===f.bar});if(bs.length>1)g+='<rect class="dot" x="'+(X[bs[0]]-11)+'" y="'+(cy(f.bar)-11)+'" width="'+(X[bs[bs.length-1]]-X[bs[0]]+22)+'" height="22" rx="11"/>'}
+  var bs=f.bar?[0,1,2,3].filter(function(i){return f[i]===f.bar}):[];
+  if(bs.length>1){g+='<rect class="dot" x="'+(X[bs[0]]-11)+'" y="'+(cy(f.bar)-11)+'" width="'+(X[bs[bs.length-1]]-X[bs[0]]+22)+'" height="22" rx="11"/>';if(nums)g+='<text class="fn" x="'+X[bs[0]]+'" y="'+(cy(f.bar)+5)+'" text-anchor="middle">1</text>'}
   f.forEach(function(v,i){
     if(v===-1)g+='<text x="'+X[i]+'" y="30" text-anchor="middle">×</text>';
     else if(v===0)g+='<circle cx="'+X[i]+'" cy="24" r="6" fill="none" stroke-width="2"/>';
+    else if(bs.length>1&&v===f.bar){}
     else{g+='<circle class="dot" cx="'+X[i]+'" cy="'+cy(v)+'" r="11"/>';
       if(nums&&f.fing&&f.fing[i]!=="0")g+='<text class="fn" x="'+X[i]+'" y="'+(cy(v)+5)+'" text-anchor="middle">'+f.fing[i]+'</text>'}
   });
@@ -164,25 +171,35 @@ function sheet(){var o=document.createElement("div");o.className="ov";o.innerHTM
 
 /* editor interativo de variações de um acorde (braço do cavaquinho: ré sol si ré) */
 var FH=46,NF=17,SX=[50,100,150,200];
+function blankSt(){return {f:[-1,-1,-1,-1],fg:[0,0,0,0],bar:0}}
+function fixSt(s){
+  var i,k,cnt={},used={};
+  s.f.forEach(function(v){if(v>0)cnt[v]=(cnt[v]||0)+1});
+  if(s.bar&&(cnt[s.bar]||0)<2)s.bar=0;
+  var ib=function(i){return s.bar&&s.f[i]===s.bar};
+  for(i=0;i<4;i++){if(s.f[i]<=0)s.fg[i]=0;else if(ib(i))s.fg[i]=1}
+  if(s.bar)used[1]=1;
+  for(i=0;i<4;i++)if(s.f[i]>0&&!ib(i)){if(s.fg[i]<1||s.fg[i]>4||used[s.fg[i]])s.fg[i]=0;else used[s.fg[i]]=1}
+  for(i=0;i<4;i++)if(s.f[i]>0&&!ib(i)&&!s.fg[i]){for(k=1;k<4&&used[k];k++);s.fg[i]=k;used[k]=1}
+}
 function chordEditor(n,done){
-  var o=sheet(),b=o.firstChild,ed=-1,st=blank();
-  function blank(){return {f:[-1,-1,-1,-1],ord:[],bar:0}}
-  function fromStr(x){var p=parseFrets(x),s=blank();if(!p)return s;s.f=p.slice(0,4);
-    var fi=p.fing?p.fing.split("").map(Number):null,ix=[0,1,2,3].filter(function(i){return s.f[i]>0});
-    s.ord=fi&&fi.some(Boolean)?ix.filter(function(i){return fi[i]>0}).sort(function(a,c){return fi[a]-fi[c]}):ix;s.bar=p.bar||0;return s}
-  function toStr(){var fg=st.f.map(function(v,i){var k=st.ord.indexOf(i);return v>0&&k>=0?k+1:0}).join("");
-    return st.f.map(function(v){return v<0?"x":v}).join(" ")+(st.bar?" b"+st.bar:"")+(fg!=="0000"?" f"+fg:"")}
+  var o=sheet(),b=o.firstChild,ed=-1,st=blankSt(),sel=-1;
+  function fromStr(x){var p=parseFrets(x),s=blankSt();if(!p)return s;s.f=p.slice(0,4);s.bar=p.bar||0;
+    for(var i=0;i<4;i++)s.fg[i]=p.fing&&s.f[i]>0?+p.fing[i]:0;fixSt(s);return s}
+  function toStr(){return st.f.map(function(v){return v<0?"x":v}).join(" ")+(st.bar?" b"+st.bar:"")+(st.fg.some(Boolean)?" f"+st.fg.join(""):"")}
+  function ib(i){return st.bar&&st.f[i]===st.bar}
   function barFrets(){var c={};st.f.forEach(function(v){if(v>0)c[v]=(c[v]||0)+1});return Object.keys(c).filter(function(k){return c[k]>1}).map(Number)}
   b.innerHTML='<h2>'+esc(n)+'</h2><div id="vl"></div><p class="mut" id="et" style="margin:14px 0 8px"></p>'
    +'<div class="fbw"><div class="mm"><button class="ib" id="up">▲</button><div class="mp" id="mp"><div class="vp" id="vp"></div></div><button class="ib" id="dn">▼</button></div>'
    +'<div><div class="fh"><span>D</span><span>G</span><span>B</span><span>D</span></div><div class="fsc" id="fs"><svg id="bd" width="250" height="'+(NF*FH+20)+'" viewBox="0 0 250 '+(NF*FH+20)+'"></svg></div><div class="ff" id="ff"></div></div></div>'
-   +'<div id="bb"></div><p id="er" style="color:#C0392B;min-height:20px;margin:6px 0"></p><div class="row" style="justify-content:center;margin:0"><button class="btn" id="ad"></button><button class="btn o" id="nw">Limpar</button><button class="btn o" id="ok">Concluir</button></div><div class="row" style="justify-content:center;margin:14px 0 0"><button class="btn d" id="dc">Excluir acorde do dicionário</button></div>';
+   +'<div id="pk"></div><div id="bb"></div><p id="er" style="color:#C0392B;min-height:20px;margin:6px 0"></p><div class="row" style="justify-content:center;margin:0"><button class="btn" id="ad"></button><button class="btn o" id="nw">Limpar</button><button class="btn o" id="ok">Concluir</button></div>'
+   +'<div class="row" style="justify-content:center;margin:14px 0 0"><button class="btn d" id="dc">Excluir acorde do dicionário</button></div>';
   var sc=b.querySelector("#fs"),mp=b.querySelector("#mp"),vp=b.querySelector("#vp"),bd=b.querySelector("#bd");
   function list(){
     var V=vars(n);
     b.querySelector("#vl").innerHTML=V.length?'<div class="grid" style="margin:10px 0">'+V.map(function(v,i){return '<div class="cc" style="cursor:default'+(i===ed?';border-color:var(--acc)':'')+'">'+dg(v,70)+'<div style="margin-top:6px"><button class="btn o" data-e="'+i+'" style="padding:4px 10px;font-size:13px">Editar</button> <button class="btn d" data-d="'+i+'" style="padding:4px 10px;font-size:13px">Excluir</button></div></div>'}).join("")+'</div>':'<p class="mut">Nenhuma variação ainda.</p>';
-    [].forEach.call(b.querySelectorAll("[data-e]"),function(x){x.onclick=function(){ed=+x.dataset.e;st=fromStr(vars(n)[ed]);paint();list();var m=Math.min.apply(null,st.f.filter(function(v){return v>0}).concat([1]));sc.scrollTop=(m-1)*FH}});
-    [].forEach.call(b.querySelectorAll("[data-d]"),function(x){x.onclick=function(){var L=vars(n).slice(),i=+x.dataset.d;L.splice(i,1);S.chords[n]=L;if(ed===i){ed=-1;st=blank()}else if(ed>i)ed--;save();list();paint()}});
+    [].forEach.call(b.querySelectorAll("[data-e]"),function(x){x.onclick=function(){ed=+x.dataset.e;st=fromStr(vars(n)[ed]);sel=-1;paint();list();var m=Math.min.apply(null,st.f.filter(function(v){return v>0}).concat([1]));sc.scrollTop=(m-1)*FH}});
+    [].forEach.call(b.querySelectorAll("[data-d]"),function(x){x.onclick=function(){var L=vars(n).slice(),i=+x.dataset.d;L.splice(i,1);S.chords[n]=L;if(ed===i){ed=-1;st=blankSt();sel=-1}else if(ed>i)ed--;save();list();paint()}});
   }
   function paint(){
     var g="",i,r,cy=function(r){return (r-.5)*FH+10};
@@ -190,15 +207,18 @@ function chordEditor(n,done){
     for(r=0;r<=NF;r++)g+='<line x1="25" x2="225" y1="'+(10+r*FH)+'" y2="'+(10+r*FH)+'" stroke="currentColor" stroke-width="'+(r?1.5:6)+'" opacity="'+(r?.45:.8)+'"/>';
     for(i=0;i<4;i++)g+='<line y1="10" y2="'+(10+NF*FH)+'" x1="'+SX[i]+'" x2="'+SX[i]+'" stroke="currentColor" stroke-width="2.5" opacity=".75"/>';
     for(r=1;r<=NF;r++)g+='<text x="10" y="'+(cy(r)+5)+'" font-size="15" text-anchor="middle" fill="currentColor" opacity=".8">'+r+'</text>';
-    if(st.bar){var bs=[0,1,2,3].filter(function(i){return st.f[i]===st.bar});if(bs.length>1)g+='<rect x="'+(SX[bs[0]]-16)+'" y="'+(cy(st.bar)-16)+'" width="'+(SX[bs[bs.length-1]]-SX[bs[0]]+32)+'" height="32" rx="16" fill="var(--acc)"/>'}
-    st.f.forEach(function(v,i){if(v>0)g+='<circle cx="'+SX[i]+'" cy="'+cy(v)+'" r="16" fill="var(--acc)"/><text x="'+SX[i]+'" y="'+(cy(v)+6)+'" font-size="17" font-weight="700" text-anchor="middle" fill="var(--onacc)">'+(st.ord.indexOf(i)+1)+'</text>'});
-    for(r=1;r<=NF;r++)for(i=0;i<4;i++)g+='<g class="cell" data-s="'+i+'" data-f="'+r+'"><rect x="'+(SX[i]-25)+'" y="'+(10+(r-1)*FH)+'" width="50" height="'+FH+'" fill="transparent"/><circle class="gh" cx="'+SX[i]+'" cy="'+cy(r)+'" r="16"/></g>';
+    var bs=[0,1,2,3].filter(ib);
+    if(bs.length>1)g+='<rect x="'+(SX[bs[0]]-16)+'" y="'+(cy(st.bar)-16)+'" width="'+(SX[bs[bs.length-1]]-SX[bs[0]]+32)+'" height="32" rx="16" fill="var(--acc)"/><text x="'+SX[bs[0]]+'" y="'+(cy(st.bar)+6)+'" font-size="17" font-weight="700" text-anchor="middle" fill="var(--onacc)">1</text>';
+    st.f.forEach(function(v,i){if(v>0&&!ib(i))g+='<circle cx="'+SX[i]+'" cy="'+cy(v)+'" r="16" fill="var(--acc)"/><text x="'+SX[i]+'" y="'+(cy(v)+6)+'" font-size="17" font-weight="700" text-anchor="middle" fill="var(--onacc)">'+st.fg[i]+'</text>'});
+    if(sel>=0&&st.f[sel]>0)g+='<circle cx="'+SX[sel]+'" cy="'+cy(st.f[sel])+'" r="21" fill="none" stroke="var(--ink)" stroke-width="3"/>';
+    for(r=1;r<=NF;r++)for(i=0;i<4;i++)g+='<g class="cell" data-s="'+i+'" data-f="'+r+'"><rect x="'+(SX[i]-25)+'" y="'+(10+(r-1)*FH)+'" width="50" height="'+FH+'" fill="transparent"'+(st.f[i]===r?' style="touch-action:none"':'')+'/><circle class="gh" cx="'+SX[i]+'" cy="'+cy(r)+'" r="16"/></g>';
     bd.innerHTML=g;
     b.querySelector("#ff").innerHTML=st.f.map(function(v,i){return '<button class="fb'+(v>0?" on":"")+'" data-t="'+i+'" aria-label="Corda">'+(v<0?"×":v===0?"○":v)+'</button>'}).join("");
-    var bf=barFrets();if(st.bar&&bf.indexOf(st.bar)<0)st.bar=0;
+    var bf=barFrets();
     b.querySelector("#bb").innerHTML=bf.length?'<div style="margin-top:8px">'+bf.map(function(k){return '<span class="chip'+(st.bar===k?" on":"")+'" data-b="'+k+'">Pestana na casa '+k+'</span>'}).join("")+'</div>':'';
+    b.querySelector("#pk").innerHTML=sel>=0&&st.f[sel]>0?'<p class="mut" style="margin:10px 0 4px">Corda '+"DGBD".charAt(sel)+' · casa '+st.f[sel]+(ib(sel)?' · faz parte da pestana (dedo 1)':' · escolha o dedo:')+'</p><div class="pkr">'+(ib(sel)?'':(st.bar?[2,3,4]:[1,2,3,4]).map(function(k){return '<button class="fb'+(st.fg[sel]===k?" on":"")+'" data-k="'+k+'">'+k+'</button>'}).join(""))+'<button class="btn d" id="pd" style="padding:8px 14px">Remover dedo</button></div>':'';
     b.querySelector("#ad").textContent=ed>=0?"Salvar alterações":"Adicionar";
-    b.querySelector("#et").textContent=ed>=0?"Editando a variação "+(ed+1):"Nova variação: toque nas casas (1 a 4 na ordem) e use × / ○ embaixo para corda muda ou solta";
+    b.querySelector("#et").textContent=ed>=0?"Editando a variação "+(ed+1):"Toque numa casa para marcar um dedo. Toque num dedo para trocar o número, ou arraste-o para mover.";
     vpu();
   }
   function vpu(){var t=sc.scrollHeight||1,h=mp.clientHeight;vp.style.top=(sc.scrollTop/t*h)+"px";vp.style.height=Math.max(10,sc.clientHeight/t*h)+"px"}
@@ -208,46 +228,78 @@ function chordEditor(n,done){
   mp.addEventListener("pointermove",function(e){if(e.buttons)jump(e)});
   b.querySelector("#up").onclick=function(){sc.scrollBy({top:-2*FH,behavior:"smooth"})};
   b.querySelector("#dn").onclick=function(){sc.scrollBy({top:2*FH,behavior:"smooth"})};
+  function cellOf(t){var c=t&&t.closest&&t.closest(".cell");return c&&bd.contains(c)?c:null}
+  bd.addEventListener("touchstart",function(e){var c=cellOf(e.target);if(c&&st.f[+c.dataset.s]===+c.dataset.f)e.preventDefault()},{passive:false});
   bd.addEventListener("click",function(e){
-    var c=e.target.closest(".cell");if(!c)return;
-    var s=+c.dataset.s,r=+c.dataset.f;
-    if(st.f[s]===r){st.f[s]=-1;st.ord=st.ord.filter(function(x){return x!==s})}
-    else{if(st.f[s]<=0)st.ord.push(s);st.f[s]=r}
-    paint();
+    var c=cellOf(e.target);if(!c)return;var s=+c.dataset.s,r=+c.dataset.f;
+    if(st.f[s]===r)return;
+    if(st.f[s]<=0)st.fg[s]=0;
+    st.f[s]=r;sel=s;fixSt(st);paint();
+  });
+  bd.addEventListener("pointerdown",function(e){
+    var c=cellOf(e.target);if(!c)return;var s=+c.dataset.s;if(st.f[s]!==+c.dataset.f)return;
+    e.preventDefault();
+    var x0=e.clientX,y0=e.clientY,drag=false,gh=null;
+    function mv(ev){
+      if(!drag&&Math.hypot(ev.clientX-x0,ev.clientY-y0)>7){drag=true;gh=document.createElement("div");gh.className="gh2";gh.textContent=ib(s)?"1":st.fg[s];document.body.appendChild(gh)}
+      if(drag){gh.style.left=ev.clientX+"px";gh.style.top=ev.clientY+"px"}
+    }
+    function up(ev){
+      document.removeEventListener("pointermove",mv);document.removeEventListener("pointerup",up);document.removeEventListener("pointercancel",up);
+      if(gh)gh.remove();
+      if(!drag){sel=sel===s?-1:s;paint();return}
+      var tc=cellOf(document.elementFromPoint(ev.clientX,ev.clientY));
+      if(tc){
+        var ts=+tc.dataset.s,tr=+tc.dataset.f;
+        if(ts===s)st.f[s]=tr;
+        else if(st.f[ts]<=0){st.f[ts]=tr;st.fg[ts]=st.fg[s];st.f[s]=-1;st.fg[s]=0;s=ts}
+        sel=s;fixSt(st);
+      }
+      paint();
+    }
+    document.addEventListener("pointermove",mv);document.addEventListener("pointerup",up);document.addEventListener("pointercancel",up);
+  });
+  b.querySelector("#pk").addEventListener("click",function(e){
+    var k=e.target.closest("[data-k]"),d=e.target.closest("#pd");
+    if(k){var v=+k.dataset.k,o2=st.fg.indexOf(v);if(o2>-1&&o2!==sel&&st.f[o2]>0)st.fg[o2]=st.fg[sel];st.fg[sel]=v;fixSt(st);paint()}
+    else if(d){st.f[sel]=-1;sel=-1;fixSt(st);paint()}
   });
   b.querySelector("#ff").addEventListener("click",function(e){
     var t=e.target.closest("[data-t]");if(!t)return;var i=+t.dataset.t;
-    if(st.f[i]>0){st.f[i]=-1;st.ord=st.ord.filter(function(x){return x!==i})}else st.f[i]=st.f[i]<0?0:-1;
-    paint();
+    if(st.f[i]>0){st.f[i]=-1;if(sel===i)sel=-1}else st.f[i]=st.f[i]<0?0:-1;
+    fixSt(st);paint();
   });
-  b.querySelector("#bb").addEventListener("click",function(e){var c=e.target.closest("[data-b]");if(c){st.bar=st.bar===+c.dataset.b?0:+c.dataset.b;paint()}});
-  b.querySelector("#nw").onclick=function(){ed=-1;st=blank();b.querySelector("#er").textContent="";paint();list()};
+  b.querySelector("#bb").addEventListener("click",function(e){var c=e.target.closest("[data-b]");if(c){st.bar=st.bar===+c.dataset.b?0:+c.dataset.b;fixSt(st);paint()}});
+  b.querySelector("#nw").onclick=function(){ed=-1;st=blankSt();sel=-1;b.querySelector("#er").textContent="";paint();list()};
   b.querySelector("#ok").onclick=function(){o.remove();if(done)done()};
   b.querySelector("#dc").onclick=function(){
-    var d=this;
-    if(!d.dataset.ok){d.dataset.ok=1;d.textContent="Toque de novo para excluir "+n;return}
+    var d=this;if(!d.dataset.ok){d.dataset.ok=1;d.textContent="Toque de novo para excluir "+n;return}
     delete S.chords[n];save();o.remove();if(done)done();
   };
   b.querySelector("#ad").onclick=function(){
     if(st.f.every(function(v){return v<0})){b.querySelector("#er").textContent="Marque ao menos uma corda (toque em × para soltar ou numa casa).";return}
     var x=toStr(),L=vars(n).slice();
     if(ed>=0)L[ed]=x;else if(L.indexOf(x)<0)L.push(x);
-    S.chords[n]=L;save();ed=-1;st=blank();b.querySelector("#er").textContent="";list();paint();
+    S.chords[n]=L;save();ed=-1;st=blankSt();sel=-1;b.querySelector("#er").textContent="";list();paint();
   };
   list();paint();
 }
-/* visualizar/escolher a variação de um acorde dentro de uma música */
-function chordView(n,s,cb){
-  var o=sheet(),b=o.firstChild;
+/* visualizar/escolher a variação de um acorde dentro de uma música (por ocorrência) */
+function chordView(n,s,cb,occ){
+  var o=sheet(),b=o.firstChild,tot=occ?occCount(s.text||"",n):0,multi=occ&&tot>1,key=multi?n+"#"+occ:n;
+  function cur(V){var p=s.pv||{},i=p[key]!=null?p[key]:(p[n]!=null?p[n]:0);return Math.min(i,Math.max(V.length-1,0))}
   function draw(){
-    var V=vars(n);s.pv=s.pv||{};var i=Math.min(s.pv[n]||0,Math.max(V.length-1,0)),m=V.length>1;
-    b.innerHTML='<h2>'+esc(n)+'</h2>'+(V.length?'<div style="display:flex;align-items:center;justify-content:center;gap:6px">'+(m?'<button class="ib" id="pr">‹</button>':'')+dg(V[i],170)+(m?'<button class="ib" id="nx">›</button>':'')+'</div><p class="mut">Variação '+(i+1)+' de '+V.length+(m?' · a escolha fica salva nesta música':'')+'</p>':'<p class="mut">Este acorde ainda não tem desenho no dicionário.</p>')
-     +'<div class="row" style="justify-content:center;margin:8px 0 0"><button class="btn" id="ed">'+(V.length?'Gerenciar variações':'Adicionar desenho')+'</button><button class="btn o" id="cx">Fechar</button></div>';
+    var V=vars(n),i=cur(V),m=V.length>1;s.pv=s.pv||{};
+    b.innerHTML='<h2>'+esc(n)+'</h2>'+(multi?'<p class="mut" style="margin:2px 0">Ocorrência '+occ+' de '+tot+' nesta música</p>':'')
+     +(V.length?'<div style="display:flex;align-items:center;justify-content:center;gap:6px">'+(m?'<button class="ib" id="pr">‹</button>':'')+dg(V[i],170)+(m?'<button class="ib" id="nx">›</button>':'')+'</div><p class="mut">Variação '+(i+1)+' de '+V.length+(m?(multi?' · vale só para esta ocorrência':' · a escolha fica salva nesta música'):'')+'</p>':'<p class="mut">Este acorde ainda não tem desenho no dicionário.</p>')
+     +'<div class="row" style="justify-content:center;margin:8px 0 0">'+(m&&multi?'<button class="btn o" id="al">Usar em todas as ocorrências</button>':'')+'<button class="btn" id="ed">'+(V.length?'Gerenciar variações':'Adicionar desenho')+'</button><button class="btn o" id="cx">Fechar</button></div>';
     b.querySelector("#cx").onclick=function(){o.remove();if(cb)cb()};
-    b.querySelector("#ed").onclick=function(){o.remove();chordEditor(n,function(){chordView(n,s,cb)})};
+    b.querySelector("#ed").onclick=function(){o.remove();chordEditor(n,function(){chordView(n,s,cb,occ)})};
     if(m){
-      b.querySelector("#pr").onclick=function(){s.pv[n]=(i-1+V.length)%V.length;save();draw()};
-      b.querySelector("#nx").onclick=function(){s.pv[n]=(i+1)%V.length;save();draw()};
+      b.querySelector("#pr").onclick=function(){s.pv[key]=(i-1+V.length)%V.length;save();draw()};
+      b.querySelector("#nx").onclick=function(){s.pv[key]=(i+1)%V.length;save();draw()};
+      var al=b.querySelector("#al");
+      if(al)al.onclick=function(){Object.keys(s.pv).forEach(function(k){if(k.indexOf(n+"#")===0)delete s.pv[k]});s.pv[n]=i;save();draw()};
     }
   }
   draw();
@@ -291,7 +343,7 @@ function viewSong(s){
    +'<div class="cifra" id="cf">'+renderCifra(s.text||"")+'</div>'
    +(vids?'<h2 style="font-size:18px;margin-top:20px">Vídeos</h2>'+vids:'')
    +'<div class="row"><a class="btn o" href="#e-'+s.id+'">Editar</a></div>';
-  $("#cf").addEventListener("click",function(e){var c=e.target.closest(".c");if(c)chordView(c.dataset.c,s,function(){route()})});
+  $("#cf").addEventListener("click",function(e){var c=e.target.closest(".c");if(c)chordView(c.dataset.c,s,function(){route()},+c.dataset.o)});
 }
 function viewEdit(s){
   var isNew=!s;s=s||{id:uid(),title:"",artist:"",text:"",links:[],pv:{}};
@@ -314,6 +366,7 @@ function viewEdit(s){
   $("#ch").addEventListener("click",function(e){var c=e.target.closest(".chip");if(c)chordView(c.dataset.c,s,chips)});
   $("#x").addEventListener("input",chips);chips();
   var M=[],sel=null,vz=$("#vz"),ta=$("#x");
+  function occOf(mi,t,name){var k=0;for(var i=0;i<M.length;i++){var T=toks(M[i].c);for(var j=0;j<T.length;j++){if(i===mi&&T[j].c===t)return k+1;if(T[j].n===name)k++}}return 0}
   function parseM(){var L=ta.value.split("\n"),o=[];for(var i=0;i<L.length;i++){
     if(isChordLine(L[i])){if(i+1<L.length&&!isChordLine(L[i+1])){o.push({c:L[i],l:L[i+1]});i++}else o.push({c:L[i],l:null})}else o.push({c:"",l:L[i]})}
     return o}
@@ -366,7 +419,7 @@ function viewEdit(s){
       document.removeEventListener("pointermove",mv);document.removeEventListener("pointerup",up);document.removeEventListener("pointercancel",up);
       var t0=document.elementFromPoint(ev.clientX,ev.clientY),onT=!!(t0&&t0.closest(".trash"));
       if(gh)gh.remove();if(tr)tr.remove();if(hit)hit.classList.remove("hit");
-      if(!drag){if(src)chordView(name,s,draw);else{sel=sel===name?null:name;draw()}return}
+      if(!drag){if(src)chordView(name,s,draw,occOf(src.m,src.t,name));else{sel=sel===name?null:name;draw()}return}
       var c=t0&&t0.closest(".lc");
       if(c)place(+c.dataset.m,+c.dataset.c,name,src);
       else if(src&&onT){M[src.m].c=build(toks(M[src.m].c).filter(function(x){return x.c!==src.t}));commit()}
@@ -421,7 +474,7 @@ function viewChords(){
   $("#cg").addEventListener("click",function(e){var c=e.target.closest(".cc");if(c)chordEditor(c.dataset.n,cg)});
   $("#na").onclick=function(){
     var n=$("#nn").value.trim();
-    if(!CH.test(n)){$("#ne").textContent="Nome de acorde inválido. Exemplos: Am, Bb7M, C#m7, G/B.";return}
+    if(!CH.test(n)){$("#ne").textContent="Nome de acorde inválido. Exemplos: Am, Bb7M, C#m7, Cm7/9, G/B.";return}
     if(!S.chords[n]){S.chords[n]=[];save()}
     $("#nn").value="";$("#ne").textContent="";cg();chordEditor(n,cg);
   };
@@ -510,6 +563,10 @@ function route(){
   if(!s)return viewList(false);
   m[1]==="s"?viewSong(s):viewEdit(s);
 }
+function themeNow(){var t=document.documentElement.dataset.theme;return t||(window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")}
+function themeIcon(){$("#tm").textContent=themeNow()==="dark"?"☀":"☾"}
+$("#tm").onclick=function(){var t=themeNow()==="dark"?"light":"dark";document.documentElement.dataset.theme=t;try{localStorage.setItem("cavaco-theme",t)}catch(e){}themeIcon()};
+themeIcon();
 $("#mb").onclick=function(){document.body.classList.add("mo")};
 $("#sc").onclick=function(){document.body.classList.remove("mo")};
 window.addEventListener("hashchange",route);
