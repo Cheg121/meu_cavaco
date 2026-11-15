@@ -100,13 +100,13 @@ textarea.cf{font:500 14px/1.35 "DM Mono",ui-monospace,monospace;white-space:pre;
 <main id="app"></main>
 <script>
 (function(){
-var S={songs:[],chords:{}},q="",cq="",fav=false;
+var S={songs:[],chords:{}},q="",cq="",fav=false,vm="m";
 var $=function(s){return document.querySelector(s)};
 var app=$("#app");
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
 function norm(s){return String(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase()}
 function uid(){return Math.random().toString(36).slice(2,8)}
-function loadLocal(){try{var j=localStorage.getItem("cavaco");if(j)S=JSON.parse(j)}catch(e){}}
+function loadLocal(){try{var j=localStorage.getItem("cavaco");if(j)S=JSON.parse(j)}catch(e){}try{if(localStorage.getItem("cavaco-vm")==="a")vm="a"}catch(e){}}
 function save(){
   try{localStorage.setItem("cavaco",JSON.stringify(S))}catch(e){}
   try{if(window.cavaco.onSave)window.cavaco.onSave(S)}catch(e){}
@@ -252,8 +252,13 @@ function chordView(n,s,cb){
 /* telas */
 function viewList(f){
   fav=f;
-  app.innerHTML='<h1>'+(f?"Favoritas":"Músicas")+'</h1><input class="search" id="q" type="search" placeholder="Buscar música, cantor ou grupo" value="'+esc(q)+'"><div id="res"></div>'+(f?'':'<a class="fab" href="#new">+ Nova música</a>');
+  app.innerHTML='<h1>'+(f?"Favoritas":"Músicas")+'</h1><input class="search" id="q" type="search" placeholder="Buscar música, cantor ou grupo" value="'+esc(q)+'"><div class="seg" id="vm"><button data-v="m">Por música</button><button data-v="a">Por artista</button></div><div id="res"></div>'+(f?'':'<a class="fab" href="#new">+ Nova música</a>');
   var qi=$("#q");qi.addEventListener("input",function(){q=qi.value;res()});
+  var vb=document.querySelectorAll("#vm button");
+  [].forEach.call(vb,function(b){
+    b.classList.toggle("on",b.dataset.v===vm);
+    b.onclick=function(){vm=b.dataset.v;try{localStorage.setItem("cavaco-vm",vm)}catch(e){}[].forEach.call(vb,function(x){x.classList.toggle("on",x.dataset.v===vm)});res()};
+  });
   $("#res").addEventListener("click",function(e){
     var b=e.target.closest(".st");if(!b)return;
     var s=find(b.dataset.id);if(s){s.fav=!s.fav;save();res()}
@@ -261,13 +266,15 @@ function viewList(f){
   res();
 }
 function res(){
-  var n=norm(q.trim()),L=S.songs.filter(function(s){return (!fav||s.fav)&&(!n||norm(s.title).indexOf(n)>-1||norm(s.artist||"").indexOf(n)>-1)});
-  L.sort(function(a,b){return norm(a.title).localeCompare(norm(b.title))});
+  var n=norm(q.trim()),A=vm==="a",L=S.songs.filter(function(s){return (!fav||s.fav)&&(!n||norm(s.title).indexOf(n)>-1||norm(s.artist||"").indexOf(n)>-1)});
+  L.sort(function(a,b){return A?(norm(a.artist||"zzzz").localeCompare(norm(b.artist||"zzzz"))||norm(a.title).localeCompare(norm(b.title))):norm(a.title).localeCompare(norm(b.title))});
+  var cnt={};L.forEach(function(s){var k=s.artist||"Sem artista";cnt[k]=(cnt[k]||0)+1});
   var h="",last="";
   L.forEach(function(s){
-    var l=norm(s.title).charAt(0).toUpperCase();if(!/[A-Z]/.test(l))l="#";
-    if(l!==last){h+='<div class="letter">'+l+'</div>';last=l}
-    h+='<div class="item"><a href="#s-'+s.id+'"><b>'+esc(s.title)+'</b><span>'+esc(s.artist||"Sem artista")+'</span></a><button class="st'+(s.fav?" on":"")+'" data-id="'+s.id+'" aria-label="Favoritar">'+(s.fav?"★":"☆")+'</button></div>';
+    var k;
+    if(A)k=s.artist||"Sem artista";else{k=norm(s.title).charAt(0).toUpperCase();if(!/[A-Z]/.test(k))k="#"}
+    if(k!==last){h+='<div class="letter">'+esc(k)+(A?' · '+cnt[k]:'')+'</div>';last=k}
+    h+='<div class="item"><a href="#s-'+s.id+'"><b>'+esc(s.title)+'</b>'+(A?'':'<span>'+esc(s.artist||"Sem artista")+'</span>')+'</a><button class="st'+(s.fav?" on":"")+'" data-id="'+s.id+'" aria-label="Favoritar">'+(s.fav?"★":"☆")+'</button></div>';
   });
   if(!h)h='<div class="empty">'+(fav&&!n?"Nenhuma favorita ainda. Toque na estrela de uma música.":S.songs.length?"Nada encontrado para essa busca.":"Sua lista está vazia. Toque em Nova música para começar.")+'</div>';
   $("#res").innerHTML=h;
