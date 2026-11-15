@@ -98,6 +98,11 @@ select{width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--li
 .ri.dragging{opacity:.65;border-color:var(--acc);box-shadow:0 6px 18px rgba(0,0,0,.3)}
 :root[data-theme="dark"]{--bg:#121A16;--card:#1B2620;--ink:#E6EEE7;--mut:#93A59A;--acc:#5FC79C;--onacc:#0B1510;--chord:#F0B24A;--line:#2B3A31;color-scheme:dark}
 .pkr{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;margin-top:6px}.pkr .fb{margin:0}
+:root{--solo:#3B5BA9}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--solo:#8CB4FF}}
+:root[data-theme="dark"]{--solo:#8CB4FF}
+.so{color:var(--solo);background:color-mix(in srgb,var(--solo) 18%,transparent);border-radius:4px;padding:0 2px;font-weight:500}
+.pt.so{background:color-mix(in srgb,var(--solo) 20%,transparent);color:var(--solo)}
 </style>
 </head>
 <body>
@@ -132,14 +137,16 @@ window.cavaco={onSave:null,paint:null,
   }};
 
 var CH=/^[A-G][#b]?(maj|min|dim|aug|sus|add|m|M|º|°|\+)?[0-9]*(M|maj|m|sus[24]?|add[0-9]+|dim|aug|º|°|[#b+-][0-9]+|\([^)]*\))*(\/([A-G][#b]?|[0-9]+))?$/;
-function isChordLine(l){var t=l.trim().split(/\s+/);return l.trim()!==""&&t.every(function(x){return CH.test(x)})}
+var SO=/^\(?[0-9]{1,2}([-–~\/.hpbrx^][0-9]{1,2})*\)?$/,LB=/^(\(?[0-9]+x\)?|\[[^\]]+\]|(intro|solo|ponte|refr[aã]o|final|riff|interl[uú]dio|base)[:.]?)$/i;
+function tk(t){return CH.test(t)?"c":SO.test(t)?"s":LB.test(t)?"l":""}
+function isChordLine(l){if(!l.trim())return false;var t=l.trim().split(/\s+/),c=0;for(var i=0;i<t.length;i++){var k=tk(t[i]);if(!k)return false;if(k!=="l")c++}return c>0}
 function vars(n){var v=S.chords[n];return !v?[]:Array.isArray(v)?v:[v]}
-function chordNames(txt){var o=[];txt.split("\n").forEach(function(l){if(isChordLine(l))l.trim().split(/\s+/).forEach(function(c){if(o.indexOf(c)<0)o.push(c)})});return o}
+function chordNames(txt){var o=[];txt.split("\n").forEach(function(l){if(isChordLine(l))l.trim().split(/\s+/).forEach(function(c){if(tk(c)==="c"&&o.indexOf(c)<0)o.push(c)})});return o}
 function occCount(t,n){var k=0;t.split("\n").forEach(function(l){if(isChordLine(l))l.trim().split(/\s+/).forEach(function(c){if(c===n)k++})});return k}
 function renderCifra(txt){
   var cnt={};
   return txt.split("\n").map(function(l){
-    if(isChordLine(l))return '<span class="cl">'+l.replace(/\S+/g,function(m){cnt[m]=(cnt[m]||0)+1;return '<span class="c'+(vars(m).length?" k":"")+'" data-c="'+esc(m)+'" data-o="'+cnt[m]+'">'+esc(m)+'</span>'})+'</span>';
+    if(isChordLine(l))return '<span class="cl">'+l.replace(/\S+/g,function(m){var k=tk(m);if(k==="s")return '<span class="so">'+esc(m)+'</span>';if(k!=="c")return esc(m);cnt[m]=(cnt[m]||0)+1;return '<span class="c'+(vars(m).length?" k":"")+'" data-c="'+esc(m)+'" data-o="'+cnt[m]+'">'+esc(m)+'</span>'})+'</span>';
     return esc(l);
   }).join("\n");
 }
@@ -379,7 +386,7 @@ function viewEdit(s){
     var b=toks(M[mi].c);b.push({c:col,n:name});M[mi].c=build(b);commit();
   }
   function rowHtml(m,i){
-    var h="",p=0;m.c.replace(/\S+/g,function(t,x){h+=" ".repeat(x-p)+'<span class="pt" data-m="'+i+'" data-t="'+x+'">'+esc(t)+'</span>';p=x+t.length;return t});
+    var h="",p=0;m.c.replace(/\S+/g,function(t,x){h+=" ".repeat(x-p)+'<span class="pt'+(CH.test(t)?"":" so")+'" data-m="'+i+'" data-t="'+x+'">'+esc(t)+'</span>';p=x+t.length;return t});
     var tx=m.l||"",n=Math.max(tx.length+1,26),y="";
     for(var k=0;k<n;k++)y+='<span class="lc" data-m="'+i+'" data-c="'+k+'">'+(k<tx.length?esc(tx.charAt(k)):" ")+'</span>';
     return '<div class="vc">'+(h||" ")+'</div><div>'+y+'</div>';
@@ -419,7 +426,7 @@ function viewEdit(s){
       document.removeEventListener("pointermove",mv);document.removeEventListener("pointerup",up);document.removeEventListener("pointercancel",up);
       var t0=document.elementFromPoint(ev.clientX,ev.clientY),onT=!!(t0&&t0.closest(".trash"));
       if(gh)gh.remove();if(tr)tr.remove();if(hit)hit.classList.remove("hit");
-      if(!drag){if(src)chordView(name,s,draw,occOf(src.m,src.t,name));else{sel=sel===name?null:name;draw()}return}
+      if(!drag){if(src){if(!el.classList.contains("so"))chordView(name,s,draw,occOf(src.m,src.t,name))}else{sel=sel===name?null:name;draw()}return}
       var c=t0&&t0.closest(".lc");
       if(c)place(+c.dataset.m,+c.dataset.c,name,src);
       else if(src&&onT){M[src.m].c=build(toks(M[src.m].c).filter(function(x){return x.c!==src.t}));commit()}
