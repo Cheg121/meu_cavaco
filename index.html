@@ -79,6 +79,18 @@ textarea.cf{font:500 14px/1.35 "DM Mono",ui-monospace,monospace;white-space:pre;
 .fb.on{background:var(--acc);color:var(--onacc);border-color:var(--acc)}
 .chip.on{background:var(--acc);color:var(--onacc);border-color:var(--acc)}
 .dg .fn{fill:var(--card)}
+.seg{display:flex;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:4px;margin:10px 0}
+.seg button{flex:1;border:0;border-radius:10px;padding:10px;background:transparent;color:var(--ink);font:600 15px "Bricolage Grotesque",sans-serif;cursor:pointer}
+.seg button.on{background:var(--acc);color:var(--onacc)}
+.pal{display:flex;flex-wrap:wrap;gap:2px;padding:8px 4px 10px;position:sticky;top:calc(58px + env(safe-area-inset-top,0px));background:var(--bg);z-index:5;border-bottom:1px solid var(--line)}
+.pc,.pt{touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}
+.vzb{font:500 14.5px/1.35 "DM Mono",ui-monospace,monospace;white-space:pre;overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 16px;margin-top:10px}
+.vc{color:var(--chord);min-height:1.35em;font-weight:500}
+.pt{background:color-mix(in srgb,var(--chord) 20%,transparent);border-radius:4px;padding:0 1px}
+.lc{cursor:pointer}.lc.hit{background:var(--acc);color:var(--onacc);border-radius:3px}
+.gh2{position:fixed;z-index:60;transform:translate(-50%,-140%);padding:6px 12px;border-radius:12px;background:var(--chord);color:var(--bg);font:600 15px "DM Mono",monospace;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.35)}
+.trash{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:55;padding:14px 22px;border-radius:16px;background:#C0392B;color:#fff;font-weight:600}
+.trash.hit{background:#8E2A20;outline:3px solid #fff}
 </style>
 </head>
 <body>
@@ -276,9 +288,11 @@ function viewEdit(s){
   app.innerHTML='<a class="back" href="'+(isNew?'#':'#s-'+s.id)+'">‹ Voltar</a><h1>'+(isNew?"Nova música":"Editar música")+'</h1>'
    +'<label for="t">Música</label><input id="t" value="'+esc(s.title)+'">'
    +'<label for="a">Cantor ou grupo</label><input id="a" value="'+esc(s.artist||"")+'">'
-   +'<label for="x">Letra com cifras</label><div class="mut" style="margin-bottom:6px">Escreva a linha das cifras acima da linha da letra, como no Cifra Club.</div>'
+   +'<label for="x">Letra com cifras</label><div class="mut" style="margin-bottom:6px">Arraste os acordes para cima da letra (ou toque no acorde e depois no ponto da letra). No modo Texto, escreva a linha das cifras acima da letra, como no Cifra Club.</div>'
+   +'<div class="seg"><button id="m1">Posicionar acordes</button><button id="m2">Texto</button></div>'
    +'<div class="row" style="margin:6px 0"><button class="btn o" id="bl">Buscar letra</button><a class="btn o" id="lc" target="_blank" rel="noopener">Cifra Club</a><a class="btn o" id="ll" target="_blank" rel="noopener">Letras.mus.br</a><a class="btn o" id="lv" target="_blank" rel="noopener">Vagalume</a></div><p id="lm" class="mut" style="margin:0 0 6px"></p>'
    +'<textarea class="cf" id="x" spellcheck="false" placeholder="G        D\nLetra da música aqui">'+esc(s.text||"")+'</textarea>'
+   +'<div id="vz" style="display:none"></div>'
    +'<label>Acordes desta música</label><div class="mut">Toque em um acorde para escolher a variação do dicionário.</div><div id="ch"></div>'
    +'<label for="l">Links do YouTube (um por linha)</label><textarea id="l" rows="3" placeholder="https://youtu.be/...">'+esc((s.links||[]).join("\n"))+'</textarea>'
    +'<p id="er" style="color:#C0392B;min-height:20px"></p>'
@@ -289,6 +303,66 @@ function viewEdit(s){
   }
   $("#ch").addEventListener("click",function(e){var c=e.target.closest(".chip");if(c)chordView(c.dataset.c,s,chips)});
   $("#x").addEventListener("input",chips);chips();
+  var M=[],sel=null,vz=$("#vz"),ta=$("#x");
+  function parseM(){var L=ta.value.split("\n"),o=[];for(var i=0;i<L.length;i++){
+    if(isChordLine(L[i])){if(i+1<L.length&&!isChordLine(L[i+1])){o.push({c:L[i],l:L[i+1]});i++}else o.push({c:L[i],l:null})}else o.push({c:"",l:L[i]})}
+    return o}
+  function toks(c){var a=[];c.replace(/\S+/g,function(t,i){a.push({c:i,n:t});return t});return a}
+  function build(a){a.sort(function(x,y){return x.c-y.c});var s="";a.forEach(function(t){var c=Math.max(t.c,s.length?s.length+1:0);s+=" ".repeat(c-s.length)+t.n});return s}
+  function ser(){var o=[];M.forEach(function(m){if(m.c.trim()!=="")o.push(m.c.replace(/\s+$/,""));if(m.l!==null)o.push(m.l)});return o.join("\n")}
+  function commit(){ta.value=ser();chips();draw()}
+  function place(mi,col,name,src){
+    if(src)M[src.m].c=build(toks(M[src.m].c).filter(function(x){return x.c!==src.t}));
+    var b=toks(M[mi].c);b.push({c:col,n:name});M[mi].c=build(b);commit();
+  }
+  function rowHtml(m,i){
+    var h="",p=0;m.c.replace(/\S+/g,function(t,x){h+=" ".repeat(x-p)+'<span class="pt" data-m="'+i+'" data-t="'+x+'">'+esc(t)+'</span>';p=x+t.length;return t});
+    var tx=m.l||"",n=Math.max(tx.length+1,26),y="";
+    for(var k=0;k<n;k++)y+='<span class="lc" data-m="'+i+'" data-c="'+k+'">'+(k<tx.length?esc(tx.charAt(k)):" ")+'</span>';
+    return '<div class="vc">'+(h||" ")+'</div><div>'+y+'</div>';
+  }
+  function draw(){
+    var N=Object.keys(S.chords).concat(chordNames(ta.value).filter(function(n){return !S.chords[n]}));
+    vz.innerHTML='<div class="pal">'+(N.length?N.map(function(n){return '<span class="chip pc'+(sel===n?" on":"")+(vars(n).length?"":" no")+'" data-n="'+esc(n)+'">'+esc(n)+'</span>'}).join(""):'<span class="mut">Crie acordes no Dicionário para arrastar aqui.</span>')+'</div><div class="vzb">'+M.map(rowHtml).join("")+'</div>';
+  }
+  function setMode(v){
+    $("#m1").classList.toggle("on",!!v);$("#m2").classList.toggle("on",!v);
+    ta.style.display=v?"none":"";vz.style.display=v?"":"none";
+    if(v){M=parseM();sel=null;draw()}
+  }
+  $("#m1").onclick=function(){setMode(1)};$("#m2").onclick=function(){setMode(0)};
+  vz.addEventListener("click",function(e){
+    var c=e.target.closest(".lc");if(c&&sel)place(+c.dataset.m,+c.dataset.c,sel,null);
+  });
+  vz.addEventListener("pointerdown",function(e){
+    var el=e.target.closest(".pc,.pt");if(!el)return;
+    var pt=el.classList.contains("pt"),name=pt?el.textContent:el.dataset.n,src=pt?{m:+el.dataset.m,t:+el.dataset.t}:null;
+    var x0=e.clientX,y0=e.clientY,drag=false,gh=null,tr=null,hit=null;
+    e.preventDefault();
+    function over(ev){
+      var t=document.elementFromPoint(ev.clientX,ev.clientY),c=t&&t.closest(".lc");
+      if(hit&&hit!==c)hit.classList.remove("hit");
+      if(c)c.classList.add("hit");hit=c;
+      if(tr)tr.classList.toggle("hit",!!(t&&t.closest(".trash")));
+    }
+    function mv(ev){
+      if(!drag&&Math.hypot(ev.clientX-x0,ev.clientY-y0)>7){
+        drag=true;gh=document.createElement("div");gh.className="gh2";gh.textContent=name;document.body.appendChild(gh);
+        if(src){tr=document.createElement("div");tr.className="trash";tr.textContent="Solte aqui para remover";document.body.appendChild(tr)}
+      }
+      if(drag){gh.style.left=ev.clientX+"px";gh.style.top=ev.clientY+"px";over(ev)}
+    }
+    function up(ev){
+      document.removeEventListener("pointermove",mv);document.removeEventListener("pointerup",up);document.removeEventListener("pointercancel",up);
+      if(gh)gh.remove();if(tr)tr.remove();if(hit)hit.classList.remove("hit");
+      if(!drag){if(src)chordView(name,s,draw);else{sel=sel===name?null:name;draw()}return}
+      var t=document.elementFromPoint(ev.clientX,ev.clientY),c=t&&t.closest(".lc");
+      if(c)place(+c.dataset.m,+c.dataset.c,name,src);
+      else if(src&&tr&&t&&t.closest(".trash")){M[src.m].c=build(toks(M[src.m].c).filter(function(x){return x.c!==src.t}));commit()}
+    }
+    document.addEventListener("pointermove",mv);document.addEventListener("pointerup",up);document.addEventListener("pointercancel",up);
+  });
+  setMode(ta.value.trim()?1:0);
   $("#sv").onclick=function(){
     var t=$("#t").value.trim();
     if(!t){$("#er").textContent="Digite o nome da música.";return}
@@ -320,7 +394,7 @@ function viewEdit(s){
     m.textContent="Buscando letra...";
     var t2=clean(t);
     getLyrics(ar,t).catch(function(){if(t2&&t2!==t)return getLyrics(ar,t2);throw 0})
-      .then(function(l){x.value=l;chips();m.textContent="Letra encontrada. Agora coloque as cifras nas linhas acima de cada trecho."})
+      .then(function(l){x.value=l;chips();setMode(1);m.textContent="Letra encontrada. Agora coloque as cifras nas linhas acima de cada trecho."})
       .catch(function(){m.textContent="Não achei essa letra. Use o Cifra Club (já tem as cifras) ou Letras/Vagalume para copiar e colar aqui."});
   };
   var d=$("#dl");
