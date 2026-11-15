@@ -210,14 +210,17 @@ function searchHtml(st){
   var ds=[];
   Object.keys(S.chords).forEach(function(k){vars(k).forEach(function(v,i){var c=cmp(v);if(c)ds.push({k:k,i:i,c:c})})});
   ds.sort(function(a,b){return (b.c.ex?1:0)-(a.c.ex?1:0)});
-  var N=identify(f),h="";
-  if(ds.length)h+='<p class="mut" style="margin:14px 0 4px">No seu dicionário</p>'+ds.map(function(d){return '<div class="rs"><span><b>'+esc(d.k)+'</b> <span class="mut">variação '+(d.i+1)+' · '+(d.c.ex?'exato':'compatível ('+d.c.d.join(", ")+')')+'</span></span><button class="btn o" data-open="'+esc(d.k)+'" style="padding:6px 12px">Abrir</button></div>'}).join("");
-  h+='<p class="mut" style="margin:14px 0 4px">Este desenho forma</p>';
+  var N=identify(f),h="",nm={};
+  N.forEach(function(c){nm[c.n]=1});
+  var exOnly=ds.filter(function(d){return d.c.ex&&!nm[d.k]}),near=ds.filter(function(d){return !d.c.ex&&!nm[d.k]});
+  function dcard(d){return '<div class="rs"><span><b>'+esc(d.k)+'</b> <span class="mut">variação '+(d.i+1)+' · '+(d.c.ex?'exato':'compatível ('+d.c.d.join(", ")+')')+'</span></span><button class="btn o" data-open="'+esc(d.k)+'" style="padding:6px 12px">Abrir</button></div>'}
+  h+='<p class="mut" style="margin:14px 0 4px">Este desenho forma</p>'+exOnly.map(dcard).join("");
   h+=N.length?N.map(function(c){
     var ex=vars(c.n).some(function(v){return cmp(v)});
     return '<div class="rs"><span><b>'+esc(c.n)+'</b>'+(c.b?' <span class="mut">baixo em '+c.b+'</span>':'')+(ex?' <span class="mut">· já no dicionário</span>':'')+'</span>'
       +(ex?'<button class="btn o" data-open="'+esc(c.n)+'" style="padding:6px 12px">Abrir</button>':'<button class="btn" data-add="'+esc(c.n)+'" style="padding:6px 12px">'+(S.chords[c.n]?"Adicionar variação":"Criar no dicionário")+'</button>')+'</div>';
-  }).join(""):'<p class="mut">Nenhum acorde conhecido com essas notas (são necessárias ao menos 2 notas diferentes).</p>';
+  }).join(""):(exOnly.length?"":'<p class="mut">Nenhum acorde conhecido com essas notas (são necessárias ao menos 2 notas diferentes).</p>');
+  if(near.length)h+='<p class="mut" style="margin:14px 0 4px">Formações aproximadas no seu dicionário</p>'+near.map(dcard).join("");
   return h;
 }
 /* editor interativo de variações de um acorde (braço do cavaquinho: ré sol si ré) */
