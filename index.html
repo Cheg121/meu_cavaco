@@ -354,11 +354,12 @@ function viewEdit(s){
     }
     function up(ev){
       document.removeEventListener("pointermove",mv);document.removeEventListener("pointerup",up);document.removeEventListener("pointercancel",up);
+      var t0=document.elementFromPoint(ev.clientX,ev.clientY),onT=!!(t0&&t0.closest(".trash"));
       if(gh)gh.remove();if(tr)tr.remove();if(hit)hit.classList.remove("hit");
       if(!drag){if(src)chordView(name,s,draw);else{sel=sel===name?null:name;draw()}return}
-      var t=document.elementFromPoint(ev.clientX,ev.clientY),c=t&&t.closest(".lc");
+      var c=t0&&t0.closest(".lc");
       if(c)place(+c.dataset.m,+c.dataset.c,name,src);
-      else if(src&&tr&&t&&t.closest(".trash")){M[src.m].c=build(toks(M[src.m].c).filter(function(x){return x.c!==src.t}));commit()}
+      else if(src&&onT){M[src.m].c=build(toks(M[src.m].c).filter(function(x){return x.c!==src.t}));commit()}
     }
     document.addEventListener("pointermove",mv);document.addEventListener("pointerup",up);document.addEventListener("pointercancel",up);
   });
