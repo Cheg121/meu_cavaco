@@ -185,7 +185,7 @@ function identify(f){
   var notes=[];f.forEach(function(v,i){if(v>=0)notes.push(OPENM[i]+v)});
   if(!notes.length)return [];
   var bass=Math.min.apply(null,notes)%12,P={};notes.forEach(function(m){P[m%12]=1});
-  var pcs=Object.keys(P).map(Number);if(pcs.length<3)return [];
+  var pcs=Object.keys(P).map(Number);if(pcs.length<2)return [];
   var out=[];
   for(var r=0;r<12;r++)TPL.forEach(function(t,ti){
     var T=t[1],rel=pcs.map(function(p){return (p-r+12)%12});
@@ -197,18 +197,27 @@ function identify(f){
   return out.slice(0,5);
 }
 function searchHtml(st){
-  var f=st.f,key=f.join(",");
+  var f=st.f,SN="DGBD";
   if(f.every(function(v){return v<0}))return '<p class="mut" style="margin-top:12px">Desenhe o acorde no braço.</p>';
-  var same=function(v){var p=parseFrets(v);return p&&p.slice(0,4).join(",")===key},ds=[];
-  Object.keys(S.chords).forEach(function(k){vars(k).forEach(function(v,i){if(same(v))ds.push({k:k,i:i})})});
+  function cmp(v){
+    var p=parseFrets(v);if(!p)return null;var ex=true,d=[];
+    for(var i=0;i<4;i++){
+      if(f[i]>=0){if(p[i]!==f[i])return null}
+      else if(p[i]!==-1){ex=false;d.push(SN.charAt(i)+(p[i]===0?" solta":" na casa "+p[i]))}
+    }
+    return {ex:ex,d:d};
+  }
+  var ds=[];
+  Object.keys(S.chords).forEach(function(k){vars(k).forEach(function(v,i){var c=cmp(v);if(c)ds.push({k:k,i:i,c:c})})});
+  ds.sort(function(a,b){return (b.c.ex?1:0)-(a.c.ex?1:0)});
   var N=identify(f),h="";
-  if(ds.length)h+='<p class="mut" style="margin:14px 0 4px">No seu dicionário</p>'+ds.map(function(d){return '<div class="rs"><span><b>'+esc(d.k)+'</b> <span class="mut">variação '+(d.i+1)+'</span></span><button class="btn o" data-open="'+esc(d.k)+'" style="padding:6px 12px">Abrir</button></div>'}).join("");
+  if(ds.length)h+='<p class="mut" style="margin:14px 0 4px">No seu dicionário</p>'+ds.map(function(d){return '<div class="rs"><span><b>'+esc(d.k)+'</b> <span class="mut">variação '+(d.i+1)+' · '+(d.c.ex?'exato':'compatível ('+d.c.d.join(", ")+')')+'</span></span><button class="btn o" data-open="'+esc(d.k)+'" style="padding:6px 12px">Abrir</button></div>'}).join("");
   h+='<p class="mut" style="margin:14px 0 4px">Este desenho forma</p>';
   h+=N.length?N.map(function(c){
-    var ex=vars(c.n).some(same);
+    var ex=vars(c.n).some(function(v){return cmp(v)});
     return '<div class="rs"><span><b>'+esc(c.n)+'</b>'+(c.b?' <span class="mut">baixo em '+c.b+'</span>':'')+(ex?' <span class="mut">· já no dicionário</span>':'')+'</span>'
       +(ex?'<button class="btn o" data-open="'+esc(c.n)+'" style="padding:6px 12px">Abrir</button>':'<button class="btn" data-add="'+esc(c.n)+'" style="padding:6px 12px">'+(S.chords[c.n]?"Adicionar variação":"Criar no dicionário")+'</button>')+'</div>';
-  }).join(""):'<p class="mut">Nenhum acorde conhecido com essas notas (são necessárias ao menos 3 notas diferentes).</p>';
+  }).join(""):'<p class="mut">Nenhum acorde conhecido com essas notas (são necessárias ao menos 2 notas diferentes).</p>';
   return h;
 }
 /* editor interativo de variações de um acorde (braço do cavaquinho: ré sol si ré) */
@@ -263,7 +272,7 @@ function chordEditor(n,done,srch){
     b.querySelector("#pk").innerHTML=sel>=0&&st.f[sel]>0?'<p class="mut" style="margin:10px 0 4px">Corda '+"DGBD".charAt(sel)+' · casa '+st.f[sel]+(ib(sel)?' · faz parte da pestana (dedo 1)':' · escolha o dedo:')+'</p><div class="pkr">'+(ib(sel)?'':(st.bar?[2,3,4]:[1,2,3,4]).map(function(k){return '<button class="fb'+(st.fg[sel]===k?" on":"")+'" data-k="'+k+'">'+k+'</button>'}).join(""))+'<button class="btn d" id="pd" style="padding:8px 14px">Remover dedo</button></div>':'';
     b.querySelector("#ad").textContent=ed>=0?"Salvar alterações":"Adicionar";
     b.querySelector("#et").textContent=ed>=0?"Editando a variação "+(ed+1):"Toque numa casa para marcar um dedo. Toque num dedo para trocar o número, ou arraste-o para mover.";
-    if(srch){b.querySelector("#et").textContent="Marque as casas e use ○ nas cordas soltas: o app mostra qual acorde é.";b.querySelector("#sr").innerHTML=searchHtml(st)}
+    if(srch){b.querySelector("#et").textContent="Marque as casas e use ○ nas cordas soltas. Corda com × vale como não informada: o app também mostra acordes do dicionário que a usam.";b.querySelector("#sr").innerHTML=searchHtml(st)}
     vpu();
   }
   function vpu(){var t=sc.scrollHeight||1,h=mp.clientHeight;vp.style.top=(sc.scrollTop/t*h)+"px";vp.style.height=Math.max(10,sc.clientHeight/t*h)+"px"}
