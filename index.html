@@ -66,6 +66,19 @@ textarea.cf{font:500 14px/1.35 "DM Mono",ui-monospace,monospace;white-space:pre;
 .dg{display:block;margin:6px auto;height:auto}
 .dg *{stroke:var(--ink)}.dg .dot{fill:var(--ink);stroke:none}
 .dg text{fill:var(--ink);stroke:none;font:600 14px "Bricolage Grotesque",sans-serif}
+.fbw{display:flex;gap:12px;justify-content:center;align-items:flex-start;color:var(--mut)}
+.mm{display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:24px}
+.mm .ib{width:34px;height:34px;font-size:14px;border:1px solid var(--line);color:var(--ink)}
+.mp{position:relative;width:34px;height:210px;border-radius:8px;border:1px solid var(--line);background:repeating-linear-gradient(var(--card) 0 11px,var(--line) 11px 12px);touch-action:none;cursor:pointer}
+.vp{position:absolute;left:-1px;right:-1px;border:2px solid var(--acc);border-radius:6px;background:color-mix(in srgb,var(--acc) 18%,transparent);pointer-events:none}
+.fsc{width:250px;height:250px;overflow-y:auto;overflow-x:hidden;border-radius:10px;background:var(--bg)}
+.fsc svg{display:block}.cell{cursor:pointer}.cell .gh{fill:var(--acc);opacity:0}.cell:hover .gh{opacity:.35}
+.fh,.ff{display:grid;grid-template-columns:repeat(4,50px);margin-left:25px;width:200px;text-align:center}
+.fh span{font-weight:800;padding:2px 0 4px;color:var(--ink)}
+.fb{width:38px;height:38px;margin:6px auto 0;border-radius:50%;border:1.5px solid var(--line);background:var(--card);color:var(--ink);font:600 17px "Bricolage Grotesque",sans-serif;cursor:pointer;padding:0}
+.fb.on{background:var(--acc);color:var(--onacc);border-color:var(--acc)}
+.chip.on{background:var(--acc);color:var(--onacc);border-color:var(--acc)}
+.dg .fn{fill:var(--card)}
 </style>
 </head>
 <body>
@@ -110,46 +123,97 @@ function renderCifra(txt){
   }).join("\n");
 }
 function parseFrets(s){
-  var t=String(s).trim().split(/[\s,\-]+/);if(t.length!==4)return null;
-  var r=[];for(var i=0;i<4;i++){
-    if(/^x$/i.test(t[i]))r.push(-1);else if(/^\d{1,2}$/.test(t[i]))r.push(+t[i]);else return null;
-  }return r;
+  var t=String(s).trim().split(/[\s,\-]+/);if(t.length<4||t.length>6)return null;
+  var r=[],i,m;for(i=0;i<4;i++){if(/^x$/i.test(t[i]))r.push(-1);else if(/^\d{1,2}$/.test(t[i]))r.push(+t[i]);else return null}
+  for(i=4;i<t.length;i++){if(m=/^b(\d{1,2})$/.exec(t[i]))r.bar=+m[1];else if(m=/^f([0-4]{4})$/.exec(t[i]))r.fing=m[1];else return null}
+  return r;
 }
-function diagram(f){
+function diagram(f,nums){
   var pos=f.filter(function(x){return x>0}),mx=Math.max.apply(null,pos.concat([0])),mn=Math.min.apply(null,pos.concat([99]));
-  var base=mx>5?mn:1,X=[30,63,96,129],g="";
+  var base=mx>5?mn:1,X=[30,63,96,129],g="",cy=function(v){return 40+(v-base+.5)*30};
   for(var i=0;i<4;i++)g+='<line x1="'+X[i]+'" y1="40" x2="'+X[i]+'" y2="190" stroke-width="2"/>';
   for(var r=0;r<=5;r++)g+='<line x1="30" y1="'+(40+r*30)+'" x2="129" y2="'+(40+r*30)+'" stroke-width="'+(r===0&&base===1?5:1.2)+'"/>';
+  if(f.bar){var bs=[0,1,2,3].filter(function(i){return f[i]===f.bar});if(bs.length>1)g+='<rect class="dot" x="'+(X[bs[0]]-11)+'" y="'+(cy(f.bar)-11)+'" width="'+(X[bs[bs.length-1]]-X[bs[0]]+22)+'" height="22" rx="11"/>'}
   f.forEach(function(v,i){
     if(v===-1)g+='<text x="'+X[i]+'" y="30" text-anchor="middle">×</text>';
     else if(v===0)g+='<circle cx="'+X[i]+'" cy="24" r="6" fill="none" stroke-width="2"/>';
-    else g+='<circle class="dot" cx="'+X[i]+'" cy="'+(40+(v-base+.5)*30)+'" r="11"/>';
+    else{g+='<circle class="dot" cx="'+X[i]+'" cy="'+cy(v)+'" r="11"/>';
+      if(nums&&f.fing&&f.fing[i]!=="0")g+='<text class="fn" x="'+X[i]+'" y="'+(cy(v)+5)+'" text-anchor="middle">'+f.fing[i]+'</text>'}
   });
   if(base>1)g+='<text x="14" y="62" text-anchor="middle">'+base+'ª</text>';
   return '<svg viewBox="0 0 160 200">'+g+'</svg>';
 }
-function dg(str,w){var f=parseFrets(str);return f?diagram(f).replace("<svg ",'<svg class="dg" style="width:'+(w||90)+'px" '):""}
+function dg(str,w){var f=parseFrets(str);return f?diagram(f,(w||90)>=100).replace("<svg ",'<svg class="dg" style="width:'+(w||90)+'px" '):""}
 function sheet(){var o=document.createElement("div");o.className="ov";o.innerHTML='<div class="sh"></div>';document.body.appendChild(o);o.addEventListener("click",function(e){if(e.target===o)o.remove()});return o}
 
-/* editor de variações de um acorde (dicionário) */
+/* editor interativo de variações de um acorde (braço do cavaquinho: ré sol si ré) */
+var FH=46,NF=17,SX=[50,100,150,200];
 function chordEditor(n,done){
-  var o=sheet(),b=o.firstChild;
-  function draw(){
+  var o=sheet(),b=o.firstChild,ed=-1,st=blank();
+  function blank(){return {f:[-1,-1,-1,-1],ord:[],bar:0}}
+  function fromStr(x){var p=parseFrets(x),s=blank();if(!p)return s;s.f=p.slice(0,4);
+    var fi=p.fing?p.fing.split("").map(Number):null,ix=[0,1,2,3].filter(function(i){return s.f[i]>0});
+    s.ord=fi&&fi.some(Boolean)?ix.filter(function(i){return fi[i]>0}).sort(function(a,c){return fi[a]-fi[c]}):ix;s.bar=p.bar||0;return s}
+  function toStr(){var fg=st.f.map(function(v,i){var k=st.ord.indexOf(i);return v>0&&k>=0?k+1:0}).join("");
+    return st.f.map(function(v){return v<0?"x":v}).join(" ")+(st.bar?" b"+st.bar:"")+(fg!=="0000"?" f"+fg:"")}
+  function barFrets(){var c={};st.f.forEach(function(v){if(v>0)c[v]=(c[v]||0)+1});return Object.keys(c).filter(function(k){return c[k]>1}).map(Number)}
+  b.innerHTML='<h2>'+esc(n)+'</h2><div id="vl"></div><p class="mut" id="et" style="margin:14px 0 8px"></p>'
+   +'<div class="fbw"><div class="mm"><button class="ib" id="up">▲</button><div class="mp" id="mp"><div class="vp" id="vp"></div></div><button class="ib" id="dn">▼</button></div>'
+   +'<div><div class="fh"><span>D</span><span>G</span><span>B</span><span>D</span></div><div class="fsc" id="sc"><svg id="bd" width="250" height="'+(NF*FH+20)+'" viewBox="0 0 250 '+(NF*FH+20)+'"></svg></div><div class="ff" id="ff"></div></div></div>'
+   +'<div id="bb"></div><p id="er" style="color:#C0392B;min-height:20px;margin:6px 0"></p><div class="row" style="justify-content:center;margin:0"><button class="btn" id="ad"></button><button class="btn o" id="nw">Limpar</button><button class="btn o" id="ok">Concluir</button></div>';
+  var sc=b.querySelector("#sc"),mp=b.querySelector("#mp"),vp=b.querySelector("#vp"),bd=b.querySelector("#bd");
+  function list(){
     var V=vars(n);
-    b.innerHTML='<h2>'+esc(n)+'</h2><div class="grid" style="margin:10px 0">'+V.map(function(v,i){return '<div class="cc" style="cursor:default">'+dg(v,70)+'<div class="mut" style="font-family:DM Mono,monospace">'+esc(v)+'</div><button class="btn d" data-d="'+i+'" style="padding:4px 10px;font-size:13px;margin-top:6px">Excluir</button></div>'}).join("")+'</div>'
-     +(V.length?'':'<p class="mut">Nenhuma variação ainda.</p>')
-     +'<p class="mut" style="margin:6px 0">Nova variação: casas das 4 cordas (ré, sol, si, ré), x = muda</p><input id="fr" placeholder="ex.: 2 0 2 0"><p id="er" style="color:#C0392B;min-height:20px;margin:6px 0"></p>'
-     +'<div class="row" style="justify-content:center;margin:0"><button class="btn" id="ad">Adicionar</button><button class="btn o" id="ok">Concluir</button></div>';
-    b.querySelector("#ok").onclick=function(){o.remove();if(done)done()};
-    b.querySelector("#ad").onclick=function(){
-      var f=parseFrets(b.querySelector("#fr").value);
-      if(!f){b.querySelector("#er").textContent="Use 4 valores, como 2 0 2 0 (ou x para corda muda).";return}
-      var s=f.map(function(v){return v<0?"x":v}).join(" "),L=vars(n).slice();
-      if(L.indexOf(s)<0)L.push(s);S.chords[n]=L;save();draw();
-    };
-    [].forEach.call(b.querySelectorAll("[data-d]"),function(x){x.onclick=function(){var L=vars(n).slice();L.splice(+x.dataset.d,1);S.chords[n]=L;save();draw()}});
+    b.querySelector("#vl").innerHTML=V.length?'<div class="grid" style="margin:10px 0">'+V.map(function(v,i){return '<div class="cc" style="cursor:default'+(i===ed?';border-color:var(--acc)':'')+'">'+dg(v,70)+'<div style="margin-top:6px"><button class="btn o" data-e="'+i+'" style="padding:4px 10px;font-size:13px">Editar</button> <button class="btn d" data-d="'+i+'" style="padding:4px 10px;font-size:13px">Excluir</button></div></div>'}).join("")+'</div>':'<p class="mut">Nenhuma variação ainda.</p>';
+    [].forEach.call(b.querySelectorAll("[data-e]"),function(x){x.onclick=function(){ed=+x.dataset.e;st=fromStr(vars(n)[ed]);paint();list();var m=Math.min.apply(null,st.f.filter(function(v){return v>0}).concat([1]));sc.scrollTop=(m-1)*FH}});
+    [].forEach.call(b.querySelectorAll("[data-d]"),function(x){x.onclick=function(){var L=vars(n).slice(),i=+x.dataset.d;L.splice(i,1);S.chords[n]=L;if(ed===i){ed=-1;st=blank()}else if(ed>i)ed--;save();list();paint()}});
   }
-  draw();
+  function paint(){
+    var g="",i,r,cy=function(r){return (r-.5)*FH+10};
+    [5,7,10,12,15,17].forEach(function(r){g+='<circle cx="125" cy="'+cy(r)+'" r="8" fill="currentColor" opacity=".13"/>'});
+    for(r=0;r<=NF;r++)g+='<line x1="25" x2="225" y1="'+(10+r*FH)+'" y2="'+(10+r*FH)+'" stroke="currentColor" stroke-width="'+(r?1.5:6)+'" opacity="'+(r?.45:.8)+'"/>';
+    for(i=0;i<4;i++)g+='<line y1="10" y2="'+(10+NF*FH)+'" x1="'+SX[i]+'" x2="'+SX[i]+'" stroke="currentColor" stroke-width="2.5" opacity=".75"/>';
+    for(r=1;r<=NF;r++)g+='<text x="10" y="'+(cy(r)+5)+'" font-size="15" text-anchor="middle" fill="currentColor" opacity=".8">'+r+'</text>';
+    if(st.bar){var bs=[0,1,2,3].filter(function(i){return st.f[i]===st.bar});if(bs.length>1)g+='<rect x="'+(SX[bs[0]]-16)+'" y="'+(cy(st.bar)-16)+'" width="'+(SX[bs[bs.length-1]]-SX[bs[0]]+32)+'" height="32" rx="16" fill="var(--acc)"/>'}
+    st.f.forEach(function(v,i){if(v>0)g+='<circle cx="'+SX[i]+'" cy="'+cy(v)+'" r="16" fill="var(--acc)"/><text x="'+SX[i]+'" y="'+(cy(v)+6)+'" font-size="17" font-weight="700" text-anchor="middle" fill="var(--onacc)">'+(st.ord.indexOf(i)+1)+'</text>'});
+    for(r=1;r<=NF;r++)for(i=0;i<4;i++)g+='<g class="cell" data-s="'+i+'" data-f="'+r+'"><rect x="'+(SX[i]-25)+'" y="'+(10+(r-1)*FH)+'" width="50" height="'+FH+'" fill="transparent"/><circle class="gh" cx="'+SX[i]+'" cy="'+cy(r)+'" r="16"/></g>';
+    bd.innerHTML=g;
+    b.querySelector("#ff").innerHTML=st.f.map(function(v,i){return '<button class="fb'+(v>0?" on":"")+'" data-t="'+i+'" aria-label="Corda">'+(v<0?"×":v===0?"○":v)+'</button>'}).join("");
+    var bf=barFrets();if(st.bar&&bf.indexOf(st.bar)<0)st.bar=0;
+    b.querySelector("#bb").innerHTML=bf.length?'<div style="margin-top:8px">'+bf.map(function(k){return '<span class="chip'+(st.bar===k?" on":"")+'" data-b="'+k+'">Pestana na casa '+k+'</span>'}).join("")+'</div>':'';
+    b.querySelector("#ad").textContent=ed>=0?"Salvar alterações":"Adicionar";
+    b.querySelector("#et").textContent=ed>=0?"Editando a variação "+(ed+1):"Nova variação: toque nas casas (1 a 4 na ordem) e use × / ○ embaixo para corda muda ou solta";
+    vpu();
+  }
+  function vpu(){var t=sc.scrollHeight||1,h=mp.clientHeight;vp.style.top=(sc.scrollTop/t*h)+"px";vp.style.height=Math.max(10,sc.clientHeight/t*h)+"px"}
+  sc.addEventListener("scroll",vpu);
+  function jump(e){var r=mp.getBoundingClientRect();sc.scrollTop=(e.clientY-r.top)/r.height*sc.scrollHeight-sc.clientHeight/2}
+  mp.addEventListener("pointerdown",function(e){mp.setPointerCapture(e.pointerId);jump(e)});
+  mp.addEventListener("pointermove",function(e){if(e.buttons)jump(e)});
+  b.querySelector("#up").onclick=function(){sc.scrollBy({top:-2*FH,behavior:"smooth"})};
+  b.querySelector("#dn").onclick=function(){sc.scrollBy({top:2*FH,behavior:"smooth"})};
+  bd.addEventListener("click",function(e){
+    var c=e.target.closest(".cell");if(!c)return;
+    var s=+c.dataset.s,r=+c.dataset.f;
+    if(st.f[s]===r){st.f[s]=-1;st.ord=st.ord.filter(function(x){return x!==s})}
+    else{if(st.f[s]<=0)st.ord.push(s);st.f[s]=r}
+    paint();
+  });
+  b.querySelector("#ff").addEventListener("click",function(e){
+    var t=e.target.closest("[data-t]");if(!t)return;var i=+t.dataset.t;
+    if(st.f[i]>0){st.f[i]=-1;st.ord=st.ord.filter(function(x){return x!==i})}else st.f[i]=st.f[i]<0?0:-1;
+    paint();
+  });
+  b.querySelector("#bb").addEventListener("click",function(e){var c=e.target.closest("[data-b]");if(c){st.bar=st.bar===+c.dataset.b?0:+c.dataset.b;paint()}});
+  b.querySelector("#nw").onclick=function(){ed=-1;st=blank();b.querySelector("#er").textContent="";paint();list()};
+  b.querySelector("#ok").onclick=function(){o.remove();if(done)done()};
+  b.querySelector("#ad").onclick=function(){
+    if(st.f.every(function(v){return v<0})){b.querySelector("#er").textContent="Marque ao menos uma corda (toque em × para soltar ou numa casa).";return}
+    var x=toStr(),L=vars(n).slice();
+    if(ed>=0)L[ed]=x;else if(L.indexOf(x)<0)L.push(x);
+    S.chords[n]=L;save();ed=-1;st=blank();b.querySelector("#er").textContent="";list();paint();
+  };
+  list();paint();
 }
 /* visualizar/escolher a variação de um acorde dentro de uma música */
 function chordView(n,s,cb){
