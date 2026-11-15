@@ -67,7 +67,16 @@ function uid(){return Math.random().toString(36).slice(2,8)}
 function loadLocal(){try{var j=localStorage.getItem("cavaco");if(j)S=JSON.parse(j)}catch(e){}}
 function save(){
   try{localStorage.setItem("cavaco",JSON.stringify(S))}catch(e){}
-  }
+  try{if(window.cavaco.onSave)window.cavaco.onSave(S)}catch(e){}
+}
+window.cavaco={onSave:null,paint:null,
+  state:function(){return S},
+  commit:function(){
+    try{localStorage.setItem("cavaco",JSON.stringify(S))}catch(e){}
+    var h=location.hash;
+    if(h===""||h==="#"){if($("#res"))res()}
+    else if(/^#s-/.test(h)){var y=window.scrollY;route();window.scrollTo(0,y)}
+  }};
 
 /* ---------- cifras ---------- */
 var CH=/^[A-G][#b]?(maj|min|dim|aug|sus|add|m|M)?\d*(\([^)]*\))?(\/[A-G][#b]?)?$/;
@@ -126,9 +135,10 @@ function chordSheet(name){
 
 /* ---------- telas ---------- */
 function viewList(){
-  app.innerHTML='<h1>Meu Cavaco</h1><input class="search" id="q" type="search" placeholder="Buscar música, cantor ou grupo" value="'+esc(q)+'"><div id="res"></div><div class="row" style="margin-top:28px"><button class="btn o" id="bk">Baixar backup</button><button class="btn o" id="rs">Restaurar backup</button></div><p id="bm" class="mut"></p><input type="file" id="fi" accept=".json,application/json" hidden><a class="fab" href="#new">+ Nova música</a>';
+  app.innerHTML='<h1>Meu Cavaco</h1><div id="cl" style="margin:-6px 0 12px"></div><input class="search" id="q" type="search" placeholder="Buscar música, cantor ou grupo" value="'+esc(q)+'"><div id="res"></div><div class="row" style="margin-top:28px"><button class="btn o" id="bk">Baixar backup</button><button class="btn o" id="rs">Restaurar backup</button></div><p id="bm" class="mut"></p><input type="file" id="fi" accept=".json,application/json" hidden><a class="fab" href="#new">+ Nova música</a>';
   var qi=$("#q");qi.addEventListener("input",function(){q=qi.value;res()});
   res();
+  if(window.cavaco.paint)window.cavaco.paint();
   var bm=$("#bm");
   $("#bk").onclick=function(){
     var u=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:"application/json"})),a=document.createElement("a");
@@ -237,5 +247,6 @@ try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(function(){});
 })();
 </script>
+<script type="module" src="cloud.js"></script>
 </body>
 </html>
