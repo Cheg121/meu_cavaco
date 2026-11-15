@@ -11,94 +11,109 @@
 
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&family=DM+Mono:wght@400;500&display=swap">
 <style>
-:root{--bg:#EEF2EA;--card:#FBFCF8;--ink:#17261F;--mut:#5D6E64;--acc:#1D5C45;--onacc:#fff;--chord:#A85B00;--line:#D3DCD0;
-box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+:root{--bg:#EEF2EA;--card:#FBFCF8;--ink:#17261F;--mut:#5D6E64;--acc:#1D5C45;--onacc:#fff;--chord:#A85B00;--line:#D3DCD0;box-sizing:border-box;padding-bottom:env(safe-area-inset-bottom,0px)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121A16;--card:#1B2620;--ink:#E6EEE7;--mut:#93A59A;--acc:#5FC79C;--onacc:#0B1510;--chord:#F0B24A;--line:#2B3A31;color-scheme:dark}}
-:root[data-theme="dark"]{--bg:#121A16;--card:#1B2620;--ink:#E6EEE7;--mut:#93A59A;--acc:#5FC79C;--onacc:#0B1510;--chord:#F0B24A;--line:#2B3A31;color-scheme:dark}
 *{box-sizing:border-box}
-html{scroll-padding-top:env(safe-area-inset-top,0px)}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 "Bricolage Grotesque",system-ui,sans-serif;min-height:100vh}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 "Bricolage Grotesque",system-ui,sans-serif;min-height:100vh;padding-top:env(safe-area-inset-top,0px)}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:10}
-main{max-width:640px;margin:0 auto;padding:16px 16px 96px}
-h1{font-size:30px;font-weight:800;margin:8px 0 14px;letter-spacing:-.02em}
+main{max-width:640px;margin:0 auto;padding:4px 16px 100px}
+header#top{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;display:flex;align-items:center;gap:6px;padding:8px 12px;background:color-mix(in srgb,var(--bg) 85%,transparent);backdrop-filter:blur(12px)}
+.brand{flex:1;font-weight:800;font-size:19px;letter-spacing:-.01em}
+.ib{width:42px;height:42px;border-radius:12px;border:0;background:transparent;color:var(--ink);display:grid;place-items:center;cursor:pointer;font-size:26px;padding:0}
+#cl{position:relative}
+.av{width:38px;height:38px;border-radius:50%;border:2px solid var(--line);padding:0;overflow:hidden;background:var(--acc);color:var(--onacc);font:700 16px inherit;cursor:pointer}
+.av img{width:100%;height:100%;object-fit:cover;display:block}
+.pop{position:absolute;right:0;top:48px;width:230px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:8px;box-shadow:0 10px 30px rgba(0,0,0,.28);font-size:14px;word-break:break-all}
+#sc{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:30;opacity:0;pointer-events:none;transition:opacity .2s}
+#dr{position:fixed;top:0;bottom:0;left:0;width:280px;max-width:84vw;background:var(--card);z-index:31;transform:translateX(-100%);transition:transform .22s;padding:calc(20px + env(safe-area-inset-top,0px)) 12px 20px}
+body.mo #sc{opacity:1;pointer-events:auto}body.mo #dr{transform:none}
+#dr .t{font-weight:800;font-size:22px;padding:4px 14px 16px}
+#dr a{display:block;padding:14px;margin-bottom:4px;border-radius:14px;color:var(--ink);text-decoration:none;font-weight:600;font-size:17px}
+#dr a.on{background:color-mix(in srgb,var(--acc) 16%,transparent);color:var(--acc)}
+h1{font-size:28px;font-weight:800;margin:10px 0 14px;letter-spacing:-.02em}
 h2{font-size:22px;font-weight:800;margin:0;letter-spacing:-.01em}
-.search{width:100%;padding:14px 16px;border-radius:14px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:17px}
+.search{width:100%;padding:14px 18px;border-radius:26px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:17px}
+input,textarea{width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit}
 .search:focus,input:focus,textarea:focus{outline:2px solid var(--acc);outline-offset:1px}
-.letter{font-weight:800;color:var(--acc);font-size:15px;margin:20px 0 6px;padding-bottom:4px;border-bottom:1.5px solid var(--line)}
-.item{display:block;padding:12px 4px;text-decoration:none;color:inherit;border-bottom:1px solid var(--line)}
-.item b{display:block;font-size:18px;font-weight:600}
+.letter{font-weight:800;color:var(--acc);font-size:14px;margin:18px 4px 2px}
+.item{display:flex;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:16px;margin:8px 0}
+.item a{flex:1;min-width:0;padding:12px 16px;text-decoration:none;color:inherit}
+.item b{display:block;font-size:17px;font-weight:600}
 .item span,.mut{color:var(--mut);font-size:14px}
+.st{border:0;background:none;font-size:24px;line-height:1;color:var(--mut);padding:10px 14px;cursor:pointer}.st.on{color:var(--chord)}
 .empty{color:var(--mut);padding:32px 4px;text-align:center}
 .fab{position:fixed;right:max(16px,calc(50% - 304px));bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--acc);color:var(--onacc);border:0;border-radius:30px;padding:16px 22px;font:600 17px "Bricolage Grotesque",sans-serif;text-decoration:none;box-shadow:0 4px 14px rgba(0,0,0,.25)}
-.btn{background:var(--acc);color:var(--onacc);border:0;border-radius:12px;padding:12px 18px;font:600 16px "Bricolage Grotesque",sans-serif;cursor:pointer;text-decoration:none;display:inline-block}
+.btn{background:var(--acc);color:var(--onacc);border:0;border-radius:14px;padding:12px 18px;font:600 16px "Bricolage Grotesque",sans-serif;cursor:pointer;text-decoration:none;display:inline-block}
 .btn.o{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
 .btn.d{background:transparent;color:#C0392B;border:1.5px solid #C0392B}
 .row{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
 .back{color:var(--acc);text-decoration:none;font-weight:600}
-.cifra{font:500 14.5px/1.35 "DM Mono",ui-monospace,monospace;white-space:pre;overflow-x:auto;background:var(--card);border-radius:14px;padding:14px;margin:12px 0}
+.cifra{font:500 14.5px/1.35 "DM Mono",ui-monospace,monospace;white-space:pre;overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin:12px 0}
 .cifra .cl{color:var(--chord);font-weight:500}
 .cifra .c{cursor:pointer;border-bottom:1.5px dotted var(--chord)}
 .cifra .c.k{background:color-mix(in srgb,var(--chord) 18%,transparent);border-radius:4px}
-label{display:block;font-weight:600;margin:14px 0 6px}
-input,textarea{width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);font:inherit}
+label{display:block;font-weight:600;margin:16px 0 6px}
 textarea.cf{font:500 14px/1.35 "DM Mono",ui-monospace,monospace;white-space:pre;min-height:300px}
-.yt{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;margin:8px 0;color:inherit;text-decoration:none;background:var(--card);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ov{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:20;display:flex;align-items:flex-end;justify-content:center}
-.sh{background:var(--card);width:100%;max-width:480px;border-radius:22px 22px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom,0px));text-align:center}
-.sh svg{width:170px;height:auto;display:block;margin:8px auto}
-.sh svg *{stroke:var(--ink)}
-.sh svg .dot{fill:var(--ink);stroke:none}
-.sh svg text{fill:var(--ink);stroke:none;font:600 14px "Bricolage Grotesque",sans-serif}
+.yt{display:flex;align-items:center;gap:8px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;margin:8px 0;color:inherit;text-decoration:none;background:var(--card);overflow:hidden;white-space:nowrap}
+.chip{display:inline-block;margin:6px 6px 0 0;padding:7px 14px;border-radius:20px;border:1.5px solid var(--line);background:var(--card);color:var(--chord);font:500 14px "DM Mono",monospace;cursor:pointer}
+.chip.no{opacity:.65;border-style:dashed}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-top:14px}
+.cc{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;text-align:center;cursor:pointer}
+.cc b{display:block;font-size:18px;color:var(--chord)}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:40;display:flex;align-items:flex-end;justify-content:center}
+.sh{background:var(--card);width:100%;max-width:520px;max-height:90vh;overflow:auto;border-radius:24px 24px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom,0px));text-align:center}
 .sh input{text-align:center;font-size:18px;font-family:"DM Mono",monospace}
+.dg{display:block;margin:6px auto;height:auto}
+.dg *{stroke:var(--ink)}.dg .dot{fill:var(--ink);stroke:none}
+.dg text{fill:var(--ink);stroke:none;font:600 14px "Bricolage Grotesque",sans-serif}
 </style>
 </head>
 <body>
+<header id="top"><button class="ib" id="mb" aria-label="Menu"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><span class="brand">Meu Cavaco</span><div id="cl"></div></header>
+<div id="sc"></div>
+<nav id="dr"><div class="t">Meu Cavaco</div><a href="#" data-r="">♪ Músicas</a><a href="#fav" data-r="fav">★ Favoritas</a><a href="#acordes" data-r="acordes">🎸 Dicionário de acordes</a></nav>
 <main id="app"></main>
 <script>
 (function(){
-var S={songs:[],chords:{}},q="";
+var S={songs:[],chords:{}},q="",cq="",fav=false;
 var $=function(s){return document.querySelector(s)};
 var app=$("#app");
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
 function norm(s){return String(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase()}
 function uid(){return Math.random().toString(36).slice(2,8)}
-
-/* ---------- armazenamento ---------- */
 function loadLocal(){try{var j=localStorage.getItem("cavaco");if(j)S=JSON.parse(j)}catch(e){}}
 function save(){
   try{localStorage.setItem("cavaco",JSON.stringify(S))}catch(e){}
   try{if(window.cavaco.onSave)window.cavaco.onSave(S)}catch(e){}
+}
+function cg(){
+  var n=norm(cq.trim()),N=Object.keys(S.chords).filter(function(k){return !n||norm(k).indexOf(n)>-1}).sort(function(a,b){return a.localeCompare(b)});
+  $("#cg").innerHTML=N.length?'<div class="grid">'+N.map(function(k){var V=vars(k);return '<div class="cc" data-n="'+esc(k)+'"><b>'+esc(k)+'</b>'+(V.length?dg(V[0],64):'<p class="mut">sem desenho</p>')+'<span class="mut">'+V.length+(V.length===1?' variação':' variações')+'</span></div>'}).join("")+'</div>':'<div class="empty">'+(Object.keys(S.chords).length?"Nenhum acorde encontrado.":"O dicionário está vazio. Adicione um acorde acima.")+'</div>';
 }
 window.cavaco={onSave:null,paint:null,
   state:function(){return S},
   commit:function(){
     try{localStorage.setItem("cavaco",JSON.stringify(S))}catch(e){}
     var h=location.hash;
-    if(h===""||h==="#"){if($("#res"))res()}
+    if($("#res"))res();else if($("#cg"))cg();
     else if(/^#s-/.test(h)){var y=window.scrollY;route();window.scrollTo(0,y)}
   }};
 
-/* ---------- cifras ---------- */
-var CH=/^[A-G][#b]?(maj|min|dim|aug|sus|add|m|M)?\d*(\([^)]*\))?(\/[A-G][#b]?)?$/;
+var CH=/^[A-G][#b]?(maj|min|dim|aug|sus|add|m|M|º|°|\+)?[0-9]*(M|maj|m|sus[24]?|add[0-9]+|dim|aug|[#b][0-9]+|\([^)]*\))*(\/[A-G][#b]?)?$/;
 function isChordLine(l){var t=l.trim().split(/\s+/);return l.trim()!==""&&t.every(function(x){return CH.test(x)})}
+function vars(n){var v=S.chords[n];return !v?[]:Array.isArray(v)?v:[v]}
+function chordNames(txt){var o=[];txt.split("\n").forEach(function(l){if(isChordLine(l))l.trim().split(/\s+/).forEach(function(c){if(o.indexOf(c)<0)o.push(c)})});return o}
 function renderCifra(txt){
   return txt.split("\n").map(function(l){
-    if(isChordLine(l)){
-      return '<span class="cl">'+l.replace(/\S+/g,function(m){return '<span class="c'+(S.chords[m]?" k":"")+'" data-c="'+esc(m)+'">'+esc(m)+'</span>'})+'</span>';
-    }
+    if(isChordLine(l))return '<span class="cl">'+l.replace(/\S+/g,function(m){return '<span class="c'+(vars(m).length?" k":"")+'" data-c="'+esc(m)+'">'+esc(m)+'</span>'})+'</span>';
     return esc(l);
   }).join("\n");
 }
 function parseFrets(s){
-  var t=s.trim().split(/[\s,\-]+/);
-  if(t.length!==4)return null;
-  var r=[];
-  for(var i=0;i<4;i++){
-    if(/^x$/i.test(t[i]))r.push(-1);
-    else if(/^\d{1,2}$/.test(t[i]))r.push(+t[i]);
-    else return null;
-  }
-  return r;
+  var t=String(s).trim().split(/[\s,\-]+/);if(t.length!==4)return null;
+  var r=[];for(var i=0;i<4;i++){
+    if(/^x$/i.test(t[i]))r.push(-1);else if(/^\d{1,2}$/.test(t[i]))r.push(+t[i]);else return null;
+  }return r;
 }
 function diagram(f){
   var pos=f.filter(function(x){return x>0}),mx=Math.max.apply(null,pos.concat([0])),mn=Math.min.apply(null,pos.concat([99]));
@@ -113,87 +128,98 @@ function diagram(f){
   if(base>1)g+='<text x="14" y="62" text-anchor="middle">'+base+'ª</text>';
   return '<svg viewBox="0 0 160 200">'+g+'</svg>';
 }
-function chordSheet(name){
-  var cur=S.chords[name]||"";
-  var ov=document.createElement("div");ov.className="ov";
-  ov.innerHTML='<div class="sh"><h2>'+esc(name)+'</h2><div id="dg">'+(cur&&parseFrets(cur)?diagram(parseFrets(cur)):'<p class="mut">Ainda sem desenho para esta cifra.</p>')+'</div>'
-   +'<p class="mut" style="margin:4px 0">Casas das 4 cordas (ré, sol, si, ré), x = não toca</p>'
-   +'<input id="fr" inputmode="text" placeholder="ex.: 2 0 2 0" value="'+esc(cur)+'">'
-   +'<p id="er" class="mut" style="color:#C0392B;min-height:20px;margin:6px 0"></p>'
-   +'<div class="row" style="justify-content:center;margin:0"><button class="btn" id="sv">Salvar desenho</button><button class="btn o" id="cl">Fechar</button></div></div>';
-  document.body.appendChild(ov);
-  function close(){ov.remove()}
-  ov.addEventListener("click",function(e){if(e.target===ov)close()});
-  ov.querySelector("#cl").onclick=close;
-  ov.querySelector("#sv").onclick=function(){
-    var v=ov.querySelector("#fr").value,f=parseFrets(v);
-    if(!v.trim()){delete S.chords[name];save();close();route();return}
-    if(!f){ov.querySelector("#er").textContent="Use 4 valores, como 2 0 2 0 (ou x para corda muda).";return}
-    S.chords[name]=f.map(function(n){return n<0?"x":n}).join(" ");save();close();route();
-  };
+function dg(str,w){var f=parseFrets(str);return f?diagram(f).replace("<svg ",'<svg class="dg" style="width:'+(w||90)+'px" '):""}
+function sheet(){var o=document.createElement("div");o.className="ov";o.innerHTML='<div class="sh"></div>';document.body.appendChild(o);o.addEventListener("click",function(e){if(e.target===o)o.remove()});return o}
+
+/* editor de variações de um acorde (dicionário) */
+function chordEditor(n,done){
+  var o=sheet(),b=o.firstChild;
+  function draw(){
+    var V=vars(n);
+    b.innerHTML='<h2>'+esc(n)+'</h2><div class="grid" style="margin:10px 0">'+V.map(function(v,i){return '<div class="cc" style="cursor:default">'+dg(v,70)+'<div class="mut" style="font-family:DM Mono,monospace">'+esc(v)+'</div><button class="btn d" data-d="'+i+'" style="padding:4px 10px;font-size:13px;margin-top:6px">Excluir</button></div>'}).join("")+'</div>'
+     +(V.length?'':'<p class="mut">Nenhuma variação ainda.</p>')
+     +'<p class="mut" style="margin:6px 0">Nova variação: casas das 4 cordas (ré, sol, si, ré), x = muda</p><input id="fr" placeholder="ex.: 2 0 2 0"><p id="er" style="color:#C0392B;min-height:20px;margin:6px 0"></p>'
+     +'<div class="row" style="justify-content:center;margin:0"><button class="btn" id="ad">Adicionar</button><button class="btn o" id="ok">Concluir</button></div>';
+    b.querySelector("#ok").onclick=function(){o.remove();if(done)done()};
+    b.querySelector("#ad").onclick=function(){
+      var f=parseFrets(b.querySelector("#fr").value);
+      if(!f){b.querySelector("#er").textContent="Use 4 valores, como 2 0 2 0 (ou x para corda muda).";return}
+      var s=f.map(function(v){return v<0?"x":v}).join(" "),L=vars(n).slice();
+      if(L.indexOf(s)<0)L.push(s);S.chords[n]=L;save();draw();
+    };
+    [].forEach.call(b.querySelectorAll("[data-d]"),function(x){x.onclick=function(){var L=vars(n).slice();L.splice(+x.dataset.d,1);S.chords[n]=L;save();draw()}});
+  }
+  draw();
+}
+/* visualizar/escolher a variação de um acorde dentro de uma música */
+function chordView(n,s,cb){
+  var o=sheet(),b=o.firstChild;
+  function draw(){
+    var V=vars(n);s.pv=s.pv||{};var i=Math.min(s.pv[n]||0,Math.max(V.length-1,0)),m=V.length>1;
+    b.innerHTML='<h2>'+esc(n)+'</h2>'+(V.length?'<div style="display:flex;align-items:center;justify-content:center;gap:6px">'+(m?'<button class="ib" id="pr">‹</button>':'')+dg(V[i],170)+(m?'<button class="ib" id="nx">›</button>':'')+'</div><p class="mut">Variação '+(i+1)+' de '+V.length+(m?' · a escolha fica salva nesta música':'')+'</p>':'<p class="mut">Este acorde ainda não tem desenho no dicionário.</p>')
+     +'<div class="row" style="justify-content:center;margin:8px 0 0"><button class="btn" id="ed">'+(V.length?'Gerenciar variações':'Adicionar desenho')+'</button><button class="btn o" id="cx">Fechar</button></div>';
+    b.querySelector("#cx").onclick=function(){o.remove();if(cb)cb()};
+    b.querySelector("#ed").onclick=function(){o.remove();chordEditor(n,function(){chordView(n,s,cb)})};
+    if(m){
+      b.querySelector("#pr").onclick=function(){s.pv[n]=(i-1+V.length)%V.length;save();draw()};
+      b.querySelector("#nx").onclick=function(){s.pv[n]=(i+1)%V.length;save();draw()};
+    }
+  }
+  draw();
 }
 
-/* ---------- telas ---------- */
-function viewList(){
-  app.innerHTML='<h1>Meu Cavaco</h1><div id="cl" style="margin:-6px 0 12px"></div><input class="search" id="q" type="search" placeholder="Buscar música, cantor ou grupo" value="'+esc(q)+'"><div id="res"></div><div class="row" style="margin-top:28px"><button class="btn o" id="bk">Baixar backup</button><button class="btn o" id="rs">Restaurar backup</button></div><p id="bm" class="mut"></p><input type="file" id="fi" accept=".json,application/json" hidden><a class="fab" href="#new">+ Nova música</a>';
+/* telas */
+function viewList(f){
+  fav=f;
+  app.innerHTML='<h1>'+(f?"Favoritas":"Músicas")+'</h1><input class="search" id="q" type="search" placeholder="Buscar música, cantor ou grupo" value="'+esc(q)+'"><div id="res"></div>'+(f?'':'<a class="fab" href="#new">+ Nova música</a>');
   var qi=$("#q");qi.addEventListener("input",function(){q=qi.value;res()});
+  $("#res").addEventListener("click",function(e){
+    var b=e.target.closest(".st");if(!b)return;
+    var s=find(b.dataset.id);if(s){s.fav=!s.fav;save();res()}
+  });
   res();
-  if(window.cavaco.paint)window.cavaco.paint();
-  var bm=$("#bm");
-  $("#bk").onclick=function(){
-    var u=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:"application/json"})),a=document.createElement("a");
-    a.href=u;a.download="meu-cavaco-backup.json";document.body.appendChild(a);a.click();a.remove();
-    setTimeout(function(){URL.revokeObjectURL(u)},4000);bm.textContent="Backup baixado. Guarde o arquivo em um lugar seguro.";
-  };
-  $("#rs").onclick=function(){$("#fi").click()};
-  $("#fi").onchange=function(e){
-    var f=e.target.files[0];if(!f)return;
-    var r=new FileReader();
-    r.onload=function(){
-      try{
-        var d=JSON.parse(r.result);if(!d||!Array.isArray(d.songs))throw 0;
-        var ids={};S.songs.forEach(function(s){ids[s.id]=1});var n=0;
-        d.songs.forEach(function(s){if(s&&s.id&&s.title&&!ids[s.id]){S.songs.push(s);n++}});
-        Object.keys(d.chords||{}).forEach(function(k){if(!S.chords[k])S.chords[k]=d.chords[k]});
-        save();res();bm.textContent="Backup restaurado: "+n+" música(s) adicionada(s).";
-      }catch(x){bm.textContent="Esse arquivo não parece ser um backup do Meu Cavaco."}
-    };
-    r.readAsText(f);e.target.value="";
-  };
 }
 function res(){
-  var n=norm(q.trim()),L=S.songs.filter(function(s){return !n||norm(s.title).indexOf(n)>-1||norm(s.artist||"").indexOf(n)>-1});
+  var n=norm(q.trim()),L=S.songs.filter(function(s){return (!fav||s.fav)&&(!n||norm(s.title).indexOf(n)>-1||norm(s.artist||"").indexOf(n)>-1)});
   L.sort(function(a,b){return norm(a.title).localeCompare(norm(b.title))});
   var h="",last="";
   L.forEach(function(s){
     var l=norm(s.title).charAt(0).toUpperCase();if(!/[A-Z]/.test(l))l="#";
     if(l!==last){h+='<div class="letter">'+l+'</div>';last=l}
-    h+='<a class="item" href="#s-'+s.id+'"><b>'+esc(s.title)+'</b><span>'+esc(s.artist||"Sem artista")+'</span></a>';
+    h+='<div class="item"><a href="#s-'+s.id+'"><b>'+esc(s.title)+'</b><span>'+esc(s.artist||"Sem artista")+'</span></a><button class="st'+(s.fav?" on":"")+'" data-id="'+s.id+'" aria-label="Favoritar">'+(s.fav?"★":"☆")+'</button></div>';
   });
-  if(!h)h='<div class="empty">'+(S.songs.length?"Nada encontrado para essa busca.":"Sua lista está vazia. Toque em Nova música para começar.")+'</div>';
+  if(!h)h='<div class="empty">'+(fav&&!n?"Nenhuma favorita ainda. Toque na estrela de uma música.":S.songs.length?"Nada encontrado para essa busca.":"Sua lista está vazia. Toque em Nova música para começar.")+'</div>';
   $("#res").innerHTML=h;
 }
 function find(id){return S.songs.filter(function(s){return s.id===id})[0]}
 function viewSong(s){
   var vids=(s.links||[]).map(function(u,i){return '<a class="yt" href="'+esc(u)+'" target="_blank" rel="noopener">▶ Vídeo '+(i+1)+' <span class="mut">'+esc(u.replace(/^https?:\/\/(www\.)?/,""))+'</span></a>'}).join("");
-  app.innerHTML='<a class="back" href="#">‹ Todas as músicas</a><h1 style="margin-bottom:2px">'+esc(s.title)+'</h1><div class="mut">'+esc(s.artist||"")+'</div>'
+  app.innerHTML='<a class="back" href="#">‹ Todas as músicas</a><div style="display:flex;align-items:center"><h1 style="margin:8px 0 2px;flex:1">'+esc(s.title)+'</h1><button class="st'+(s.fav?" on":"")+'" id="fv" aria-label="Favoritar">'+(s.fav?"★":"☆")+'</button></div><div class="mut">'+esc(s.artist||"")+'</div>'
    +'<div class="mut" style="margin-top:10px">Toque em uma cifra para ver o desenho no cavaquinho.</div>'
    +'<div class="cifra" id="cf">'+renderCifra(s.text||"")+'</div>'
    +(vids?'<h2 style="font-size:18px;margin-top:20px">Vídeos</h2>'+vids:'')
    +'<div class="row"><a class="btn o" href="#e-'+s.id+'">Editar</a></div>';
-  $("#cf").addEventListener("click",function(e){var c=e.target.closest(".c");if(c)chordSheet(c.dataset.c)});
+  $("#cf").addEventListener("click",function(e){var c=e.target.closest(".c");if(c)chordView(c.dataset.c,s,function(){route()})});
+  $("#fv").onclick=function(){s.fav=!s.fav;save();this.textContent=s.fav?"★":"☆";this.classList.toggle("on",!!s.fav)};
 }
 function viewEdit(s){
-  var isNew=!s;s=s||{id:uid(),title:"",artist:"",text:"",links:[]};
+  var isNew=!s;s=s||{id:uid(),title:"",artist:"",text:"",links:[],pv:{}};
   app.innerHTML='<a class="back" href="'+(isNew?'#':'#s-'+s.id)+'">‹ Voltar</a><h1>'+(isNew?"Nova música":"Editar música")+'</h1>'
    +'<label for="t">Música</label><input id="t" value="'+esc(s.title)+'">'
    +'<label for="a">Cantor ou grupo</label><input id="a" value="'+esc(s.artist||"")+'">'
    +'<label for="x">Letra com cifras</label><div class="mut" style="margin-bottom:6px">Escreva a linha das cifras acima da linha da letra, como no Cifra Club.</div>'
    +'<div class="row" style="margin:6px 0"><button class="btn o" id="bl">Buscar letra</button><a class="btn o" id="lc" target="_blank" rel="noopener">Cifra Club</a><a class="btn o" id="ll" target="_blank" rel="noopener">Letras.mus.br</a><a class="btn o" id="lv" target="_blank" rel="noopener">Vagalume</a></div><p id="lm" class="mut" style="margin:0 0 6px"></p>'
    +'<textarea class="cf" id="x" spellcheck="false" placeholder="G        D\nLetra da música aqui">'+esc(s.text||"")+'</textarea>'
+   +'<label>Acordes desta música</label><div class="mut">Toque em um acorde para escolher a variação do dicionário.</div><div id="ch"></div>'
    +'<label for="l">Links do YouTube (um por linha)</label><textarea id="l" rows="3" placeholder="https://youtu.be/...">'+esc((s.links||[]).join("\n"))+'</textarea>'
    +'<p id="er" style="color:#C0392B;min-height:20px"></p>'
    +'<div class="row"><button class="btn" id="sv">Salvar</button>'+(isNew?'':'<button class="btn d" id="dl">Excluir</button>')+'</div>';
+  function chips(){
+    var N=chordNames($("#x").value);
+    $("#ch").innerHTML=N.length?N.map(function(c){return '<span class="chip'+(vars(c).length?"":" no")+'" data-c="'+esc(c)+'">'+esc(c)+'</span>'}).join(""):'<div class="mut" style="margin-top:6px">Nenhum acorde reconhecido ainda.</div>';
+  }
+  $("#ch").addEventListener("click",function(e){var c=e.target.closest(".chip");if(c)chordView(c.dataset.c,s,chips)});
+  $("#x").addEventListener("input",chips);chips();
   $("#sv").onclick=function(){
     var t=$("#t").value.trim();
     if(!t){$("#er").textContent="Digite o nome da música.";return}
@@ -225,7 +251,7 @@ function viewEdit(s){
     m.textContent="Buscando letra...";
     var t2=clean(t);
     getLyrics(ar,t).catch(function(){if(t2&&t2!==t)return getLyrics(ar,t2);throw 0})
-      .then(function(l){x.value=l;m.textContent="Letra encontrada. Agora coloque as cifras nas linhas acima de cada trecho."})
+      .then(function(l){x.value=l;chips();m.textContent="Letra encontrada. Agora coloque as cifras nas linhas acima de cada trecho."})
       .catch(function(){m.textContent="Não achei essa letra. Use o Cifra Club (já tem as cifras) ou Letras/Vagalume para copiar e colar aqui."});
   };
   var d=$("#dl");
@@ -234,13 +260,31 @@ function viewEdit(s){
     S.songs=S.songs.filter(function(x){return x.id!==s.id});save();location.hash="";
   };
 }
+function viewChords(){
+  app.innerHTML='<h1>Dicionário de acordes</h1><input class="search" id="cs" type="search" placeholder="Buscar acorde (ex.: Bb7M)" value="'+esc(cq)+'">'
+   +'<div class="row" style="margin-bottom:0"><input id="nn" placeholder="Novo acorde (ex.: Bb7M)" style="flex:1;min-width:0"><button class="btn" id="na">Adicionar</button></div><p id="ne" style="color:#C0392B;min-height:20px;margin:6px 0 0"></p><div id="cg"></div>';
+  $("#cs").addEventListener("input",function(){cq=this.value;cg()});
+  $("#cg").addEventListener("click",function(e){var c=e.target.closest(".cc");if(c)chordEditor(c.dataset.n,cg)});
+  $("#na").onclick=function(){
+    var n=$("#nn").value.trim();
+    if(!CH.test(n)){$("#ne").textContent="Nome de acorde inválido. Exemplos: Am, Bb7M, C#m7, G/B.";return}
+    if(!S.chords[n]){S.chords[n]=[];save()}
+    $("#nn").value="";$("#ne").textContent="";cg();chordEditor(n,cg);
+  };
+  cg();
+}
 function route(){
-  var h=location.hash.slice(1);window.scrollTo(0,0);
+  var h=location.hash.slice(1);window.scrollTo(0,0);document.body.classList.remove("mo");
+  [].forEach.call(document.querySelectorAll("#dr a"),function(a){a.classList.toggle("on",a.dataset.r===(h==="fav"||h==="acordes"?h:/^(s|e)-|^new$/.test(h)?"":h))});
   if(h==="new")return viewEdit(null);
+  if(h==="fav")return viewList(true);
+  if(h==="acordes")return viewChords();
   var m=/^(s|e)-(\w+)$/.exec(h),s=m&&find(m[2]);
-  if(!s)return viewList();
+  if(!s)return viewList(false);
   m[1]==="s"?viewSong(s):viewEdit(s);
 }
+$("#mb").onclick=function(){document.body.classList.add("mo")};
+$("#sc").onclick=function(){document.body.classList.remove("mo")};
 window.addEventListener("hashchange",route);
 loadLocal();route();
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}

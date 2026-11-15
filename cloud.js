@@ -5,19 +5,24 @@ const on = firebaseConfig && firebaseConfig.apiKey && !/COLE/.test(firebaseConfi
 let A, F, auth, fs, user = null, authKnown = false, ready = false, msg = "", unsubs = [], known = {};
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
+let pop = false;
 function paint() {
   const e = document.getElementById("cl");
   if (!e) return;
   if (!on || !authKnown) { e.innerHTML = ""; return; }
-  let h = "";
-  if (!user) h = '<button class="btn o" id="gi" style="padding:8px 14px;font-size:14px">☁ Entrar com Google para sincronizar</button>';
-  else h = '<span class="mut">' + (ready ? "☁ Sincronizado" : "☁ Conectando…") + " · " + esc(user.email || "") + '</span> <button class="btn o" id="go" style="padding:6px 12px;font-size:13px;margin-left:6px">Sair</button>';
-  if (msg) h += '<p style="color:#C0392B;margin:6px 0;font-size:14px">' + esc(msg) + "</p>";
-  e.innerHTML = h;
-  const gi = document.getElementById("gi"), go = document.getElementById("go");
-  if (gi) gi.onclick = login;
-  if (go) go.onclick = () => A.signOut(auth);
+  if (!user) {
+    e.innerHTML = '<button class="btn" id="gi" style="padding:8px 16px;font-size:14px">Entrar</button>' + (msg ? '<div class="pop" style="color:#C0392B">' + esc(msg) + "</div>" : "");
+    document.getElementById("gi").onclick = login;
+    return;
+  }
+  const ini = esc((user.email || "?").charAt(0).toUpperCase());
+  e.innerHTML = '<button class="av" id="av" aria-label="Conta">' + (user.photoURL ? '<img src="' + esc(user.photoURL) + '" referrerpolicy="no-referrer" alt="">' : ini) + "</button>"
+    + (pop ? '<div class="pop"><b>' + (ready ? "☁ Sincronizado" : "☁ Sincronizando…") + '</b><span class="mut">' + esc(user.email || "") + "</span>" + (msg ? '<span style="color:#C0392B">' + esc(msg) + "</span>" : "") + '<button class="btn o" id="go">Sair</button></div>' : "");
+  document.getElementById("av").onclick = () => { pop = !pop; paint(); };
+  const go = document.getElementById("go");
+  if (go) go.onclick = () => { pop = false; A.signOut(auth); };
 }
+document.addEventListener("click", ev => { if (pop && !ev.target.closest("#cl")) { pop = false; paint(); } });
 cv.paint = paint;
 
 function login() {
