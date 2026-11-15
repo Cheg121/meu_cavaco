@@ -179,7 +179,7 @@ function viewEdit(s){
    +'<label for="t">Música</label><input id="t" value="'+esc(s.title)+'">'
    +'<label for="a">Cantor ou grupo</label><input id="a" value="'+esc(s.artist||"")+'">'
    +'<label for="x">Letra com cifras</label><div class="mut" style="margin-bottom:6px">Escreva a linha das cifras acima da linha da letra, como no Cifra Club.</div>'
-   +'<div class="row" style="margin:6px 0"><button class="btn o" id="bl">Buscar letra</button><a class="btn o" id="ll" target="_blank" rel="noopener">Letras.mus.br</a><a class="btn o" id="lv" target="_blank" rel="noopener">Vagalume</a></div><p id="lm" class="mut" style="margin:0 0 6px"></p>'
+   +'<div class="row" style="margin:6px 0"><button class="btn o" id="bl">Buscar letra</button><a class="btn o" id="lc" target="_blank" rel="noopener">Cifra Club</a><a class="btn o" id="ll" target="_blank" rel="noopener">Letras.mus.br</a><a class="btn o" id="lv" target="_blank" rel="noopener">Vagalume</a></div><p id="lm" class="mut" style="margin:0 0 6px"></p>'
    +'<textarea class="cf" id="x" spellcheck="false" placeholder="G        D\nLetra da música aqui">'+esc(s.text||"")+'</textarea>'
    +'<label for="l">Links do YouTube (um por linha)</label><textarea id="l" rows="3" placeholder="https://youtu.be/...">'+esc((s.links||[]).join("\n"))+'</textarea>'
    +'<p id="er" style="color:#C0392B;min-height:20px"></p>'
@@ -192,26 +192,31 @@ function viewEdit(s){
     if(isNew)S.songs.push(s);
     save();location.hash="s-"+s.id;
   };
+  function clean(t){return t.replace(/\s*[\(\[][^\)\]]*[\)\]]\s*/g," ").replace(/\s+(feat|ft|part)\.?\s.*$/i,"").replace(/\s+/g," ").trim()}
   function links(){
-    var k=encodeURIComponent(($("#t").value+" "+$("#a").value).trim());
+    var k=encodeURIComponent((clean($("#t").value)+" "+$("#a").value).trim());
+    $("#lc").href="https://www.cifraclub.com.br/?q="+k;
     $("#ll").href="https://www.letras.mus.br/?q="+k;$("#lv").href="https://www.vagalume.com.br/search?q="+k;
   }
   $("#t").addEventListener("input",links);$("#a").addEventListener("input",links);links();
+  function getLyrics(ar,t){
+    var c=new AbortController(),tm=setTimeout(function(){c.abort()},15000);
+    return fetch("https://api.lyrics.ovh/v1/"+encodeURIComponent(ar)+"/"+encodeURIComponent(t),{signal:c.signal})
+      .then(function(r){if(!r.ok)throw 0;return r.json()})
+      .then(function(j){
+        var l=(j&&j.lyrics||"").replace(/\r\n?/g,"\n").replace(/^Paroles de la chanson[^\n]*\n+/i,"").replace(/\n{3,}/g,"\n\n").trim();
+        if(!l)throw 0;return l;
+      }).then(function(l){clearTimeout(tm);return l},function(e){clearTimeout(tm);throw e});
+  }
   $("#bl").onclick=function(){
     var t=$("#t").value.trim(),ar=$("#a").value.trim(),m=$("#lm"),x=$("#x");
     if(!t||!ar){m.textContent="Preencha a música e o cantor ou grupo para buscar a letra.";return}
     if(x.value.trim()){m.textContent="Já existe texto na letra. Apague-o antes de buscar.";return}
     m.textContent="Buscando letra...";
-    var c=new AbortController(),tm=setTimeout(function(){c.abort()},15000);
-    fetch("https://api.lyrics.ovh/v1/"+encodeURIComponent(ar)+"/"+encodeURIComponent(t),{signal:c.signal})
-      .then(function(r){if(!r.ok)throw 0;return r.json()})
-      .then(function(j){
-        var l=(j&&j.lyrics||"").replace(/\r\n?/g,"\n").replace(/^Paroles de la chanson[^\n]*\n+/i,"").replace(/\n{3,}/g,"\n\n").trim();
-        if(!l)throw 0;
-        x.value=l;m.textContent="Letra encontrada. Agora coloque as cifras nas linhas acima de cada trecho.";
-      })
-      .catch(function(){m.textContent="Não achei essa letra. Confira a grafia ou use os botões Letras.mus.br e Vagalume para copiar e colar."})
-      .then(function(){clearTimeout(tm)});
+    var t2=clean(t);
+    getLyrics(ar,t).catch(function(){if(t2&&t2!==t)return getLyrics(ar,t2);throw 0})
+      .then(function(l){x.value=l;m.textContent="Letra encontrada. Agora coloque as cifras nas linhas acima de cada trecho."})
+      .catch(function(){m.textContent="Não achei essa letra. Use o Cifra Club (já tem as cifras) ou Letras/Vagalume para copiar e colar aqui."});
   };
   var d=$("#dl");
   if(d)d.onclick=function(){
