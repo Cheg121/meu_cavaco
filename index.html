@@ -160,7 +160,7 @@ function chordEditor(n,done){
   b.innerHTML='<h2>'+esc(n)+'</h2><div id="vl"></div><p class="mut" id="et" style="margin:14px 0 8px"></p>'
    +'<div class="fbw"><div class="mm"><button class="ib" id="up">▲</button><div class="mp" id="mp"><div class="vp" id="vp"></div></div><button class="ib" id="dn">▼</button></div>'
    +'<div><div class="fh"><span>D</span><span>G</span><span>B</span><span>D</span></div><div class="fsc" id="fs"><svg id="bd" width="250" height="'+(NF*FH+20)+'" viewBox="0 0 250 '+(NF*FH+20)+'"></svg></div><div class="ff" id="ff"></div></div></div>'
-   +'<div id="bb"></div><p id="er" style="color:#C0392B;min-height:20px;margin:6px 0"></p><div class="row" style="justify-content:center;margin:0"><button class="btn" id="ad"></button><button class="btn o" id="nw">Limpar</button><button class="btn o" id="ok">Concluir</button></div>';
+   +'<div id="bb"></div><p id="er" style="color:#C0392B;min-height:20px;margin:6px 0"></p><div class="row" style="justify-content:center;margin:0"><button class="btn" id="ad"></button><button class="btn o" id="nw">Limpar</button><button class="btn o" id="ok">Concluir</button></div><div class="row" style="justify-content:center;margin:14px 0 0"><button class="btn d" id="dc">Excluir acorde do dicionário</button></div>';
   var sc=b.querySelector("#fs"),mp=b.querySelector("#mp"),vp=b.querySelector("#vp"),bd=b.querySelector("#bd");
   function list(){
     var V=vars(n);
@@ -207,6 +207,11 @@ function chordEditor(n,done){
   b.querySelector("#bb").addEventListener("click",function(e){var c=e.target.closest("[data-b]");if(c){st.bar=st.bar===+c.dataset.b?0:+c.dataset.b;paint()}});
   b.querySelector("#nw").onclick=function(){ed=-1;st=blank();b.querySelector("#er").textContent="";paint();list()};
   b.querySelector("#ok").onclick=function(){o.remove();if(done)done()};
+  b.querySelector("#dc").onclick=function(){
+    var d=this;
+    if(!d.dataset.ok){d.dataset.ok=1;d.textContent="Toque de novo para excluir "+n;return}
+    delete S.chords[n];save();o.remove();if(done)done();
+  };
   b.querySelector("#ad").onclick=function(){
     if(st.f.every(function(v){return v<0})){b.querySelector("#er").textContent="Marque ao menos uma corda (toque em × para soltar ou numa casa).";return}
     var x=toStr(),L=vars(n).slice();
