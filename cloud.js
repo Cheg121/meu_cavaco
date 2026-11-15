@@ -25,6 +25,26 @@ function paint() {
 document.addEventListener("click", ev => { if (pop && !ev.target.closest("#cl")) { pop = false; paint(); } });
 cv.paint = paint;
 
+let authRes; const authReady = new Promise(r => { authRes = r; });
+const CODEA = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+if (on) {
+  cv.share = async (kind, payload) => {
+    if (!user) throw new Error("login");
+    const rnd = crypto.getRandomValues(new Uint8Array(10));
+    const code = Array.from(rnd, x => CODEA[x % CODEA.length]).join("");
+    await F.setDoc(F.doc(fs, "shares", code), { kind, json: JSON.stringify(payload), owner: user.uid, t: Date.now() });
+    return code;
+  };
+  cv.fetchShare = async code => {
+    await Promise.race([authReady, new Promise(r => setTimeout(r, 8000))]);
+    if (!user) throw new Error("login");
+    const snap = await F.getDoc(F.doc(fs, "shares", code));
+    if (!snap.exists()) throw new Error("none");
+    const d = snap.data();
+    return { kind: d.kind, payload: JSON.parse(d.json) };
+  };
+}
+
 function login() {
   msg = "";
   A.signInWithPopup(auth, new A.GoogleAuthProvider()).catch(e => {
@@ -126,7 +146,7 @@ async function init() {
     auth = A.getAuth(fb);
     try { fs = F.initializeFirestore(fb, { localCache: F.persistentLocalCache({ tabManager: F.persistentMultipleTabManager() }) }); }
     catch (e) { fs = F.getFirestore(fb); }
-    A.onAuthStateChanged(auth, u => { stop(); user = u; authKnown = true; if (u) start(u); paint(); });
+    A.onAuthStateChanged(auth, u => { stop(); user = u; authKnown = true; if (u) start(u); paint(); authRes(); });
   } catch (e) { /* sem conexão: o app segue funcionando só com os dados do aparelho */ }
 }
 if (on) init();

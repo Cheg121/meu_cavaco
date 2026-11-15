@@ -107,15 +107,42 @@ select{width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--li
 .rs b{font-size:18px;color:var(--chord)}
 .pv{width:100%;display:flex;align-items:center;gap:10px;padding:8px 4px 2px;margin-top:6px;border-top:1px dashed var(--line)}
 .bt{display:flex;gap:6px;flex:none}
+.pt{display:inline-block;position:relative;padding:0}
+.pt::after{content:"";position:absolute;inset:-8px -4px -1px}
+.lp{position:fixed;z-index:60;transform:translate(-50%,-135%);padding:8px 14px;border-radius:16px;background:var(--card);border:2px solid var(--acc);color:var(--ink);font:500 21px "DM Mono",ui-monospace,monospace;white-space:pre;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.4);text-align:left}
+.lp .lc2{display:block;text-align:center;color:var(--chord);font-weight:700;font-size:18px;margin-bottom:2px}
+.lp .lh{background:var(--acc);color:var(--onacc);border-radius:3px}
+.fbar{position:fixed;left:0;right:0;bottom:0;z-index:8;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(12px);border-top:1px solid var(--line)}
+.fbar #er:empty{display:none}
+.fr{display:flex;gap:10px;max-width:608px;margin:0 auto}.fr .btn{flex:1}
+.asb{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:8;display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:30px;padding:4px 14px 4px 6px;box-shadow:0 6px 20px rgba(0,0,0,.3)}
+.asb .ib{font-size:20px;color:var(--acc)}
+.asb input{width:110px;padding:0;border:0;background:none}
+.code{font:700 28px "DM Mono",monospace;letter-spacing:.15em;color:var(--chord);text-align:center}
 </style>
 </head>
 <body>
 <header id="top"><button class="ib" id="mb" aria-label="Menu"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><span class="brand">Meu Cavaco</span><button class="ib" id="tm" aria-label="Alternar tema claro/escuro" style="font-size:22px"></button><div id="cl"></div></header>
 <div id="sc"></div>
-<nav id="dr"><div class="t">Meu Cavaco</div><a href="#" data-r="">♪ Músicas</a><a href="#rep" data-r="rep">♫ Repertórios</a><a href="#acordes" data-r="acordes">🎸 Dicionário de acordes</a></nav>
+<nav id="dr"><div class="t">Meu Cavaco</div><a href="#" data-r="">♪ Músicas</a><a href="#rep" data-r="rep">♫ Repertórios</a><a href="#acordes" data-r="acordes">🎸 Dicionário de acordes</a><div style="border-top:1px solid var(--line);margin:12px 0 6px"></div><a href="#" id="rcv">⇩ Receber por código</a><a href="#" id="vn"></a></nav>
 <main id="app"></main>
 <script>
 (function(){
+var CHANGELOG=[
+ {v:"1.1",d:"15/11/2026",n:[
+  "Posicionar acordes no celular: agora dá para arrastar um acorde já colocado na letra e arrastá-lo para a faixa vermelha para excluir.",
+  "Lupa na hora de arrastar: a letra aparece ampliada acima do dedo, mostrando exatamente em qual letra o acorde vai cair.",
+  "Compartilhar músicas e acordes por link ou código (botão Compartilhar) e receber pelo menu lateral. Exige atualizar as regras do Firebase.",
+  "Na edição da música, a faixa de acordes mostra só os acordes usados nela, em ordem alfabética. O botão + Acorde abre o dicionário completo.",
+  "Botões Salvar e Excluir flutuantes na edição da música, sempre visíveis ao rolar.",
+  "Rolagem automática da letra, com controle de velocidade do mais lento ao mais rápido.",
+  "Número da versão e novidades no menu lateral."]},
+ {v:"1.0",d:"14/11/2026",n:[
+  "Lista de músicas com busca, por música ou por artista; letras com cifras clicáveis e desenho no cavaquinho.",
+  "Dicionário de acordes com editor no braço (pestana, dedos, variações) e busca pelo desenho.",
+  "Repertórios com ordem arrastável, sincronização entre aparelhos com a conta Google e tema claro/escuro."]}
+];
+var APP_V=CHANGELOG[0].v;
 var S={songs:[],chords:{},reps:[]},q="",cq="",fav=false,vm="m",cr=null,dragId=null;
 var $=function(s){return document.querySelector(s)};
 var app=$("#app");
@@ -250,9 +277,9 @@ function chordEditor(n,done,srch,pick){
    +'<div class="fbw"><div class="mm"><button class="ib" id="up">▲</button><div class="mp" id="mp"><div class="vp" id="vp"></div></div><button class="ib" id="dn">▼</button></div>'
    +'<div><div class="fh"><span>D</span><span>G</span><span>B</span><span>D</span></div><div class="fsc" id="fs"><svg id="bd" width="250" height="'+(NF*FH+20)+'" viewBox="0 0 250 '+(NF*FH+20)+'"></svg></div><div class="ff" id="ff"></div></div></div>'
    +'<div id="pk"></div><div id="bb"></div><div id="sr"></div><p id="er" style="color:#C0392B;min-height:20px;margin:6px 0"></p><div class="row" style="justify-content:center;margin:0"><button class="btn" id="ad"></button><button class="btn o" id="nw">Limpar</button><button class="btn o" id="ok">Concluir</button></div>'
-   +'<div class="row" style="justify-content:center;margin:14px 0 0"><button class="btn d" id="dc">Excluir acorde do dicionário</button></div>';
+   +'<div class="row" style="justify-content:center;margin:14px 0 0"><button class="btn o" id="shc">↗ Compartilhar acorde</button><button class="btn d" id="dc">Excluir acorde</button></div>';
   var sc=b.querySelector("#fs"),mp=b.querySelector("#mp"),vp=b.querySelector("#vp"),bd=b.querySelector("#bd");
-  if(srch)["#ad","#dc"].forEach(function(s){b.querySelector(s).style.display="none"});
+  if(srch)["#ad","#dc","#shc"].forEach(function(s){b.querySelector(s).style.display="none"});
   function list(){
     if(srch)return;
     var V=vars(n);
@@ -342,6 +369,7 @@ function chordEditor(n,done,srch,pick){
     if(ed>=0)L[ed]=x;else if(L.indexOf(x)<0)L.push(x);
     S.chords[n]=L;save();ed=-1;st=blankSt();sel=-1;b.querySelector("#er").textContent="";list();paint();
   };
+  b.querySelector("#shc").onclick=function(){if(n)shareSheet("chord",{n:n,v:vars(n)},n)};
   b.querySelector("#sr").addEventListener("click",function(e){
     var u=e.target.closest("[data-use]");if(u){o.remove();if(pick)pick(u.dataset.use);return}
     var a=e.target.closest("[data-add]"),p=e.target.closest("[data-open]");
@@ -369,6 +397,118 @@ function chordView(n,s,cb,occ){
     }
   }
   draw();
+}
+
+/* rolagem automática */
+var as={on:false,raf:0,last:0,acc:0,v:4};
+try{as.v=Math.min(10,Math.max(1,+localStorage.getItem("cavaco-as")||4))}catch(e){}
+function asSpeed(){return 6*Math.pow(1.38,as.v-1)}
+function asStop(){as.on=false;cancelAnimationFrame(as.raf);var b=document.getElementById("ap");if(b)b.textContent="▶"}
+function asStep(t){
+  if(!as.on)return;
+  as.acc+=asSpeed()*Math.min(100,t-as.last)/1000;as.last=t;
+  var px=Math.floor(as.acc);if(px>=1){as.acc-=px;window.scrollBy(0,px)}
+  if(window.innerHeight+window.scrollY>=document.documentElement.scrollHeight-2){asStop();return}
+  as.raf=requestAnimationFrame(asStep);
+}
+function asPause(e){if(as.on&&!(e.target.closest&&e.target.closest(".asb")))asStop()}
+window.addEventListener("touchstart",asPause,{passive:true});window.addEventListener("wheel",asPause,{passive:true});
+
+/* escolher acorde do dicionário (ordem alfabética) */
+function pickChord(cb){
+  var o=sheet(),b=o.firstChild,qq="";b.style.textAlign="left";
+  b.innerHTML='<h2>Adicionar acorde</h2><input class="search" id="pq" type="search" placeholder="Buscar acorde" style="margin:12px 0;text-align:left;font-family:inherit"><div id="pl"></div><div class="row" style="justify-content:center;margin-bottom:0"><button class="btn o" id="px">Fechar</button></div>';
+  function dr(){
+    var n=norm(qq.trim()),N=Object.keys(S.chords).filter(function(k){return !n||norm(k).indexOf(n)>-1}).sort(function(a,c){return a.localeCompare(c)});
+    b.querySelector("#pl").innerHTML=N.length?'<div class="grid">'+N.map(function(k){var V=vars(k);return '<div class="cc" data-n="'+esc(k)+'"><b>'+esc(k)+'</b>'+(V.length?dg(V[0],54):"")+'</div>'}).join("")+'</div>':'<div class="empty">Nenhum acorde no dicionário.</div>';
+  }
+  b.querySelector("#pq").addEventListener("input",function(){qq=this.value;dr()});
+  b.querySelector("#pl").addEventListener("click",function(e){var c=e.target.closest(".cc");if(c){o.remove();cb(c.dataset.n)}});
+  b.querySelector("#px").onclick=function(){o.remove()};
+  dr();
+}
+
+/* compartilhar e receber */
+function importChord(n,V){
+  if(!CH.test(n)||!Array.isArray(V))return;
+  var L=vars(n).slice();
+  V.forEach(function(v){if(typeof v==="string"&&parseFrets(v)&&L.indexOf(v)<0)L.push(v)});
+  S.chords[n]=L;
+}
+function importSong(p){
+  var s={id:uid(),title:String(p.t||"Sem título").slice(0,200),artist:String(p.a||"").slice(0,200),text:String(p.x||"").slice(0,60000),
+    links:(Array.isArray(p.l)?p.l:[]).filter(function(u){return typeof u==="string"&&/^https?:\/\//.test(u)}).slice(0,20),pv:{}};
+  var C=p.c&&typeof p.c==="object"?p.c:{},pv=p.pv&&typeof p.pv==="object"?p.pv:{};
+  Object.keys(C).forEach(function(n){importChord(n,C[n])});
+  Object.keys(pv).forEach(function(k){
+    var base=k.split("#")[0],sv=Array.isArray(C[base])?C[base][pv[k]]:null,i=sv==null?-1:vars(base).indexOf(sv);
+    if(i>-1)s.pv[k]=i;
+  });
+  S.songs.push(s);save();return s;
+}
+function shareSheet(kind,payload,title){
+  var o=sheet(),b=o.firstChild;
+  b.innerHTML='<h2>Compartilhar</h2><p class="mut">'+esc(title)+'</p><div id="sb">Gerando link…</div><div class="row" style="justify-content:center"><button class="btn o" id="sx">Fechar</button></div>';
+  b.querySelector("#sx").onclick=function(){o.remove()};
+  var box=b.querySelector("#sb");
+  if(!window.cavaco.share){box.innerHTML='<p class="mut">Para compartilhar, ative a sincronização com o Firebase (login com Google).</p>';return}
+  window.cavaco.share(kind,payload).then(function(code){
+    var url=location.origin+location.pathname+"?share="+code;
+    box.innerHTML='<p class="mut" style="margin:6px 0">Código</p><div class="code">'+code+'</div><input readonly id="su" value="'+esc(url)+'" style="margin:10px 0;font-size:13px"><div class="row" style="justify-content:center"><button class="btn" id="cp">Copiar link</button>'+(navigator.share?'<button class="btn o" id="ns">Enviar…</button>':'')+'</div><p class="mut">Quem receber o link ou o código precisa entrar com a conta Google no app.</p>';
+    box.querySelector("#cp").onclick=function(){var t=this;(navigator.clipboard?navigator.clipboard.writeText(url):Promise.reject()).then(function(){t.textContent="Copiado ✓"},function(){box.querySelector("#su").select()})};
+    var ns=box.querySelector("#ns");if(ns)ns.onclick=function(){navigator.share({title:title,text:"Cifra no Meu Cavaco",url:url}).catch(function(){})};
+  }).catch(function(e){
+    box.innerHTML='<p style="color:#C0392B">'+(e&&e.message==="login"?"Entre com a sua conta Google (botão no canto superior direito) para compartilhar.":"Não foi possível compartilhar agora. Verifique a conexão e se as regras do Firebase foram atualizadas.")+'</p>';
+  });
+}
+function receiveSheet(code0){
+  var o=sheet(),b=o.firstChild;
+  b.innerHTML='<h2>Receber</h2><p class="mut">Cole o código ou o link que você recebeu.</p><input id="rc2" placeholder="Código ou link" value="'+esc(code0||"")+'" style="font-family:inherit"><div id="rv" style="margin-top:12px"></div><div class="row" style="justify-content:center"><button class="btn" id="rb">Buscar</button><button class="btn o" id="rx">Fechar</button></div>';
+  b.querySelector("#rx").onclick=function(){o.remove()};
+  var rv=b.querySelector("#rv");
+  function show(r){
+    var p=r.payload||{};
+    if(r.kind==="song"){
+      var nc=Object.keys(p.c||{}).length;
+      rv.innerHTML='<p style="margin:4px 0"><b>'+esc(p.t||"")+'</b><br><span class="mut">'+esc(p.a||"")+'</span></p><p class="mut">'+nc+' acorde(s) junto(s)</p><button class="btn" id="ad2">Adicionar ao meu catálogo</button>';
+      rv.querySelector("#ad2").onclick=function(){var s=importSong(p);o.remove();location.hash="s-"+s.id};
+    }else if(r.kind==="chord"){
+      var V=(p.v||[]).filter(function(v){return typeof v==="string"&&parseFrets(v)});
+      rv.innerHTML='<p style="margin:4px 0"><b style="font-size:20px;color:var(--chord)">'+esc(p.n||"")+'</b> <span class="mut">'+V.length+' variação(ões)</span></p><div class="grid" style="margin:6px 0 12px">'+V.map(function(v){return '<div class="cc" style="cursor:default">'+dg(v,70)+'</div>'}).join("")+'</div><button class="btn" id="ad2">Adicionar ao meu dicionário</button>';
+      rv.querySelector("#ad2").onclick=function(){importChord(p.n,V);save();o.remove();route()};
+    }else rv.innerHTML='<p style="color:#C0392B">Conteúdo não reconhecido.</p>';
+  }
+  function go(){
+    var raw=b.querySelector("#rc2").value.trim(),m=/share=([A-Za-z0-9]+)/.exec(raw),code=(m?m[1]:raw).replace(/[^A-Za-z0-9]/g,"").toUpperCase();
+    if(!code){rv.innerHTML='<p style="color:#C0392B">Digite o código.</p>';return}
+    if(!window.cavaco.fetchShare){rv.innerHTML='<p class="mut">Para receber, ative a sincronização com o Firebase (login com Google).</p>';return}
+    rv.innerHTML='<p class="mut">Buscando…</p>';
+    window.cavaco.fetchShare(code).then(show).catch(function(e){
+      var m2=e&&e.message;
+      rv.innerHTML='<p style="color:#C0392B">'+(m2==="login"?"Entre com a sua conta Google (botão no canto superior direito) e toque em Buscar de novo.":m2==="none"?"Código não encontrado.":"Não foi possível buscar agora. Verifique a conexão.")+'</p>';
+    });
+  }
+  b.querySelector("#rb").onclick=go;
+  if(code0)go();
+}
+
+/* versão e novidades */
+function whatsNew(){
+  var o=sheet(),b=o.firstChild,seen=false;b.style.textAlign="left";
+  try{seen=localStorage.getItem("cavaco-seenv")===APP_V}catch(e){}
+  var cur=CHANGELOG[0];
+  b.innerHTML='<h2>Novidades · versão '+esc(APP_V)+'</h2><p class="mut" style="margin:2px 0 8px">'+esc(cur.d)+'</p><ul style="margin:0;padding-left:20px">'+cur.n.map(function(t){return '<li style="margin:6px 0">'+esc(t)+'</li>'}).join("")+'</ul>'
+   +CHANGELOG.slice(1).map(function(c){return '<details style="margin-top:12px"><summary style="cursor:pointer;font-weight:600">Versão '+esc(c.v)+' · '+esc(c.d)+'</summary><ul style="padding-left:20px">'+c.n.map(function(t){return '<li style="margin:6px 0">'+esc(t)+'</li>'}).join("")+'</ul></details>'}).join("")
+   +'<label style="display:flex;gap:10px;align-items:center;margin:16px 0 10px;font-weight:400"><input type="checkbox" id="nv" style="width:22px;height:22px;padding:0;flex:none"'+(seen?" checked":"")+'>Não mostrar novamente até a próxima versão</label><div class="row" style="justify-content:center;margin:0"><button class="btn" id="ok2">OK</button></div>';
+  b.querySelector("#ok2").onclick=function(){
+    try{if(b.querySelector("#nv").checked)localStorage.setItem("cavaco-seenv",APP_V);else localStorage.removeItem("cavaco-seenv")}catch(e){}
+    o.remove();
+  };
+}
+function startup(){
+  var m=/[?&]share=([A-Za-z0-9]+)/.exec(location.search);
+  if(m){try{history.replaceState(null,"",location.pathname+location.hash)}catch(e){}setTimeout(function(){receiveSheet(m[1].toUpperCase())},900);return}
+  try{if(localStorage.getItem("cavaco-seenv")!==APP_V)setTimeout(whatsNew,700)}catch(e){}
 }
 
 /* telas */
@@ -405,10 +545,19 @@ function find(id){return S.songs.filter(function(s){return s.id===id})[0]}
 function viewSong(s){
   var vids=(s.links||[]).map(function(u,i){return '<a class="yt" href="'+esc(u)+'" target="_blank" rel="noopener">▶ Vídeo '+(i+1)+' <span class="mut">'+esc(u.replace(/^https?:\/\/(www\.)?/,""))+'</span></a>'}).join("");
   app.innerHTML='<a class="back" href="#">‹ Todas as músicas</a><h1 style="margin:8px 0 2px">'+esc(s.title)+'</h1><div class="mut">'+esc(s.artist||"")+'</div>'
-   +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px"><span class="mut">Toque em uma cifra para ver o desenho no cavaquinho.</span><a class="btn o" href="#e-'+s.id+'" style="padding:8px 14px;font-size:14px;flex:none">✎ Editar</a></div>'
-   +'<div class="cifra" id="cf">'+renderCifra(s.text||"")+'</div>'
+   +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px"><span class="mut">Toque em uma cifra para ver o desenho no cavaquinho.</span><span style="display:flex;gap:8px;flex:none"><button class="btn o" id="shs" style="padding:8px 14px;font-size:14px">↗ Compartilhar</button><a class="btn o" href="#e-'+s.id+'" style="padding:8px 14px;font-size:14px">✎ Editar</a></span></div>'
+   +'<div class="cifra" id="cf">'+renderCifra(s.text||"")+'</div><div class="asb"><button class="ib" id="ap" aria-label="Rolagem automática">▶</button><span class="mut">lento</span><input type="range" id="av2" min="1" max="10" value="'+as.v+'"><span class="mut">rápido</span></div>'
    +(vids?'<h2 style="font-size:18px;margin-top:20px">Vídeos</h2>'+vids:'');
   $("#cf").addEventListener("click",function(e){var c=e.target.closest(".c");if(c)chordView(c.dataset.c,s,function(){route()},+c.dataset.o)});
+  $("#shs").onclick=function(){
+    var c={};chordNames(s.text||"").forEach(function(n){if(vars(n).length)c[n]=vars(n)});
+    shareSheet("song",{t:s.title,a:s.artist||"",x:s.text||"",l:s.links||[],pv:s.pv||{},c:c},s.title);
+  };
+  $("#av2").oninput=function(){as.v=+this.value;try{localStorage.setItem("cavaco-as",as.v)}catch(e){}};
+  $("#ap").onclick=function(){
+    if(as.on){asStop();return}
+    as.on=true;as.acc=0;as.last=performance.now();this.textContent="⏸";as.raf=requestAnimationFrame(asStep);
+  };
 }
 function viewEdit(s){
   var isNew=!s;s=s||{id:uid(),title:"",artist:"",text:"",links:[],pv:{}};
@@ -422,8 +571,7 @@ function viewEdit(s){
    +'<div id="vz" style="display:none"></div>'
    +'<label>Acordes desta música</label><div class="mut">Toque em um acorde para escolher a variação do dicionário.</div><div id="ch"></div>'
    +'<label for="l">Links do YouTube (um por linha)</label><textarea id="l" rows="3" placeholder="https://youtu.be/...">'+esc((s.links||[]).join("\n"))+'</textarea>'
-   +'<p id="er" style="color:#C0392B;min-height:20px"></p>'
-   +'<div class="row"><button class="btn" id="sv">Salvar</button>'+(isNew?'':'<button class="btn d" id="dl">Excluir</button>')+'</div>';
+   +'<div class="fbar"><p id="er" style="color:#C0392B;margin:0 0 6px"></p><div class="fr"><button class="btn" id="sv">Salvar</button>'+(isNew?'':'<button class="btn d" id="dl">Excluir</button>')+'</div></div>';
   function chips(){
     var N=chordNames($("#x").value);
     $("#ch").innerHTML=N.length?N.map(function(c){return '<span class="chip'+(vars(c).length?"":" no")+'" data-c="'+esc(c)+'">'+esc(c)+'</span>'}).join(""):'<div class="mut" style="margin-top:6px">Nenhum acorde reconhecido ainda.</div>';
@@ -450,16 +598,17 @@ function viewEdit(s){
     return '<div class="vc">'+(h||" ")+'</div><div>'+y+'</div>';
   }
   function draw(){
-    var N=Object.keys(S.chords);
+    var N=[];
     chordNames(ta.value).concat(extra).forEach(function(n){if(N.indexOf(n)<0)N.push(n)});
+    N.sort(function(a,b){return a.localeCompare(b)});
     var pv="";
     if(sel){
       var V=vars(sel),i=Math.min((s.pv||{})[sel]||0,Math.max(V.length-1,0));
       pv='<div class="pv">'+(V.length?'<div>'+dg(V[i],58)+'</div><div style="flex:1;text-align:left"><b style="color:var(--chord);font-size:18px">'+esc(sel)+'</b><div class="mut">Variação '+(i+1)+' de '+V.length+'</div></div>'+(V.length>1?'<button class="ib" data-pv="-1">‹</button><button class="ib" data-pv="1">›</button>':'')+'<button class="btn o" data-pe style="padding:6px 12px;font-size:13px">Editar</button>'
         :'<div style="flex:1;text-align:left"><b style="color:var(--chord);font-size:18px">'+esc(sel)+'</b><div class="mut">Sem desenho no dicionário.</div></div><button class="btn o" data-pe style="padding:6px 12px;font-size:13px">Adicionar desenho</button>')+'</div>';
     }
-    vz.innerHTML='<div class="pal">'+(N.length?N.map(function(n){return '<span class="chip pc'+(sel===n?" on":"")+(vars(n).length?"":" no")+'" data-n="'+esc(n)+'">'+esc(n)+'</span>'}).join(""):'<span class="mut">Crie acordes no Dicionário para arrastar aqui.</span>')
-      +'<span class="chip" id="vs" style="color:var(--ink)">✎ Buscar pelo desenho</span>'+pv+'</div><div class="vzb">'+M.map(rowHtml).join("")+'</div>';
+    vz.innerHTML='<div class="pal">'+N.map(function(n){return '<span class="chip pc'+(sel===n?" on":"")+(vars(n).length?"":" no")+'" data-n="'+esc(n)+'">'+esc(n)+'</span>'}).join("")
+      +'<span class="chip" id="va" style="color:var(--ink)">+ Acorde</span><span class="chip" id="vs" style="color:var(--ink)">✎ Buscar pelo desenho</span>'+pv+'</div><div class="vzb">'+M.map(rowHtml).join("")+'</div>';
   }
   function setMode(v){
     $("#m1").classList.toggle("on",!!v);$("#m2").classList.toggle("on",!v);
@@ -475,21 +624,28 @@ function viewEdit(s){
     if(a&&sel){var V=vars(sel);if(V.length>1){s.pv=s.pv||{};var i=Math.min(s.pv[sel]||0,V.length-1);s.pv[sel]=(i+(+a.dataset.pv)+V.length)%V.length;save();draw()}}
     else if(p&&sel)chordEditor(sel,draw);
     else if(q2)chordEditor(null,draw,true,function(n){if(extra.indexOf(n)<0)extra.push(n);sel=n;draw()});
+    else if(e.target.closest("#va"))pickChord(function(n){if(extra.indexOf(n)<0)extra.push(n);sel=n;draw()});
   });
   vz.addEventListener("pointerdown",function(e){
     var el=e.target.closest(".pc,.pt");if(!el)return;
     var pt=el.classList.contains("pt"),name=pt?el.textContent:el.dataset.n,src=pt?{m:+el.dataset.m,t:+el.dataset.t}:null;
     var x0=e.clientX,y0=e.clientY,drag=false,gh=null,tr=null,hit=null;
     e.preventDefault();
+    function lens(c){
+      var q='<span class="lc2">'+esc(name)+'</span>';
+      if(c){var m=+c.dataset.m,col=+c.dataset.c,tx=M[m].l||"";
+        q+=" ".repeat(Math.max(0,8-col))+esc(tx.slice(Math.max(0,col-8),col))+'<span class="lh">'+esc(tx.charAt(col)||" ")+'</span>'+esc(tx.slice(col+1,col+9))}
+      gh.innerHTML=q;
+    }
     function over(ev){
       var t=document.elementFromPoint(ev.clientX,ev.clientY),c=t&&t.closest(".lc");
       if(hit&&hit!==c)hit.classList.remove("hit");
-      if(c)c.classList.add("hit");hit=c;
+      if(c)c.classList.add("hit");hit=c;if(gh)lens(c);
       if(tr)tr.classList.toggle("hit",!!(t&&t.closest(".trash")));
     }
     function mv(ev){
       if(!drag&&Math.hypot(ev.clientX-x0,ev.clientY-y0)>7){
-        drag=true;gh=document.createElement("div");gh.className="gh2";gh.textContent=name;document.body.appendChild(gh);
+        drag=true;gh=document.createElement("div");gh.className="lp";document.body.appendChild(gh);lens(null);
         if(src){tr=document.createElement("div");tr.className="trash";tr.textContent="Solte aqui para remover";document.body.appendChild(tr)}
       }
       if(drag){gh.style.left=ev.clientX+"px";gh.style.top=ev.clientY+"px";over(ev)}
@@ -634,6 +790,7 @@ function addSongs(){
   dr();
 }
 function route(){
+  asStop();
   var h=location.hash.slice(1);window.scrollTo(0,0);document.body.classList.remove("mo");
   [].forEach.call(document.querySelectorAll("#dr a"),function(a){a.classList.toggle("on",a.dataset.r===(h==="rep"||h==="acordes"?h:/^(s|e)-|^new$/.test(h)?"":h))});
   if(h==="new")return viewEdit(null);
@@ -649,8 +806,11 @@ $("#tm").onclick=function(){var t=themeNow()==="dark"?"light":"dark";document.do
 themeIcon();
 $("#mb").onclick=function(){document.body.classList.add("mo")};
 $("#sc").onclick=function(){document.body.classList.remove("mo")};
+$("#vn").textContent="ℹ Versão "+APP_V+" · Novidades";
+$("#vn").onclick=function(e){e.preventDefault();document.body.classList.remove("mo");whatsNew()};
+$("#rcv").onclick=function(e){e.preventDefault();document.body.classList.remove("mo");receiveSheet("")};
 window.addEventListener("hashchange",route);
-loadLocal();route();
+loadLocal();route();startup();
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(function(){});
 })();
