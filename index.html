@@ -159,9 +159,9 @@ function chordEditor(n,done){
   function barFrets(){var c={};st.f.forEach(function(v){if(v>0)c[v]=(c[v]||0)+1});return Object.keys(c).filter(function(k){return c[k]>1}).map(Number)}
   b.innerHTML='<h2>'+esc(n)+'</h2><div id="vl"></div><p class="mut" id="et" style="margin:14px 0 8px"></p>'
    +'<div class="fbw"><div class="mm"><button class="ib" id="up">▲</button><div class="mp" id="mp"><div class="vp" id="vp"></div></div><button class="ib" id="dn">▼</button></div>'
-   +'<div><div class="fh"><span>D</span><span>G</span><span>B</span><span>D</span></div><div class="fsc" id="sc"><svg id="bd" width="250" height="'+(NF*FH+20)+'" viewBox="0 0 250 '+(NF*FH+20)+'"></svg></div><div class="ff" id="ff"></div></div></div>'
+   +'<div><div class="fh"><span>D</span><span>G</span><span>B</span><span>D</span></div><div class="fsc" id="fs"><svg id="bd" width="250" height="'+(NF*FH+20)+'" viewBox="0 0 250 '+(NF*FH+20)+'"></svg></div><div class="ff" id="ff"></div></div></div>'
    +'<div id="bb"></div><p id="er" style="color:#C0392B;min-height:20px;margin:6px 0"></p><div class="row" style="justify-content:center;margin:0"><button class="btn" id="ad"></button><button class="btn o" id="nw">Limpar</button><button class="btn o" id="ok">Concluir</button></div>';
-  var sc=b.querySelector("#sc"),mp=b.querySelector("#mp"),vp=b.querySelector("#vp"),bd=b.querySelector("#bd");
+  var sc=b.querySelector("#fs"),mp=b.querySelector("#mp"),vp=b.querySelector("#vp"),bd=b.querySelector("#bd");
   function list(){
     var V=vars(n);
     b.querySelector("#vl").innerHTML=V.length?'<div class="grid" style="margin:10px 0">'+V.map(function(v,i){return '<div class="cc" style="cursor:default'+(i===ed?';border-color:var(--acc)':'')+'">'+dg(v,70)+'<div style="margin-top:6px"><button class="btn o" data-e="'+i+'" style="padding:4px 10px;font-size:13px">Editar</button> <button class="btn d" data-d="'+i+'" style="padding:4px 10px;font-size:13px">Excluir</button></div></div>'}).join("")+'</div>':'<p class="mut">Nenhuma variação ainda.</p>';
