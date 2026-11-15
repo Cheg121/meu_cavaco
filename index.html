@@ -165,8 +165,8 @@ function diagram(f,nums){
   var base=mx>5?mn:1,X=[30,63,96,129],g="",cy=function(v){return 40+(v-base+.5)*30};
   for(var i=0;i<4;i++)g+='<line x1="'+X[i]+'" y1="40" x2="'+X[i]+'" y2="190" stroke-width="2"/>';
   for(var r=0;r<=5;r++)g+='<line x1="30" y1="'+(40+r*30)+'" x2="129" y2="'+(40+r*30)+'" stroke-width="'+(r===0&&base===1?5:1.2)+'"/>';
-  var bs=f.bar?[0,1,2,3].filter(function(i){return f[i]===f.bar}):[];
-  if(bs.length>1){g+='<rect class="dot" x="'+(X[bs[0]]-11)+'" y="'+(cy(f.bar)-11)+'" width="'+(X[bs[bs.length-1]]-X[bs[0]]+22)+'" height="22" rx="11"/>';if(nums)g+='<text class="fn" x="'+X[bs[0]]+'" y="'+(cy(f.bar)+5)+'" text-anchor="middle">1</text>'}
+  var bs=f.bar?[0,1,2,3].filter(function(i){return f[i]===f.bar}):[],bl=0;[0,1,2,3].forEach(function(i){if(f.bar&&f[i]>=f.bar)bl=i});
+  if(bs.length>1){g+='<rect class="dot" x="'+(X[bs[0]]-11)+'" y="'+(cy(f.bar)-11)+'" width="'+(X[bl]-X[bs[0]]+22)+'" height="22" rx="11"/>';if(nums)g+='<text class="fn" x="'+X[bs[0]]+'" y="'+(cy(f.bar)+5)+'" text-anchor="middle">1</text>'}
   f.forEach(function(v,i){
     if(v===-1)g+='<text x="'+X[i]+'" y="30" text-anchor="middle">×</text>';
     else if(v===0)g+='<circle cx="'+X[i]+'" cy="24" r="6" fill="none" stroke-width="2"/>';
@@ -266,8 +266,8 @@ function chordEditor(n,done,srch,pick){
     for(r=0;r<=NF;r++)g+='<line x1="25" x2="225" y1="'+(10+r*FH)+'" y2="'+(10+r*FH)+'" stroke="currentColor" stroke-width="'+(r?1.5:6)+'" opacity="'+(r?.45:.8)+'"/>';
     for(i=0;i<4;i++)g+='<line y1="10" y2="'+(10+NF*FH)+'" x1="'+SX[i]+'" x2="'+SX[i]+'" stroke="currentColor" stroke-width="2.5" opacity=".75"/>';
     for(r=1;r<=NF;r++)g+='<text x="10" y="'+(cy(r)+5)+'" font-size="15" text-anchor="middle" fill="currentColor" opacity=".8">'+r+'</text>';
-    var bs=[0,1,2,3].filter(ib);
-    if(bs.length>1)g+='<rect x="'+(SX[bs[0]]-16)+'" y="'+(cy(st.bar)-16)+'" width="'+(SX[bs[bs.length-1]]-SX[bs[0]]+32)+'" height="32" rx="16" fill="var(--acc)"/><text x="'+SX[bs[0]]+'" y="'+(cy(st.bar)+6)+'" font-size="17" font-weight="700" text-anchor="middle" fill="var(--onacc)">1</text>';
+    var bs=[0,1,2,3].filter(ib),bl=0;[0,1,2,3].forEach(function(i){if(st.bar&&st.f[i]>=st.bar)bl=i});
+    if(bs.length>1)g+='<rect x="'+(SX[bs[0]]-16)+'" y="'+(cy(st.bar)-16)+'" width="'+(SX[bl]-SX[bs[0]]+32)+'" height="32" rx="16" fill="var(--acc)"/><text x="'+SX[bs[0]]+'" y="'+(cy(st.bar)+6)+'" font-size="17" font-weight="700" text-anchor="middle" fill="var(--onacc)">1</text>';
     st.f.forEach(function(v,i){if(v>0&&!ib(i))g+='<circle cx="'+SX[i]+'" cy="'+cy(v)+'" r="16" fill="var(--acc)"/><text x="'+SX[i]+'" y="'+(cy(v)+6)+'" font-size="17" font-weight="700" text-anchor="middle" fill="var(--onacc)">'+st.fg[i]+'</text>'});
     if(sel>=0&&st.f[sel]>0)g+='<circle cx="'+SX[sel]+'" cy="'+cy(st.f[sel])+'" r="21" fill="none" stroke="var(--ink)" stroke-width="3"/>';
     for(r=1;r<=NF;r++)for(i=0;i<4;i++)g+='<g class="cell" data-s="'+i+'" data-f="'+r+'"><rect x="'+(SX[i]-25)+'" y="'+(10+(r-1)*FH)+'" width="50" height="'+FH+'" fill="transparent"'+(st.f[i]===r?' style="touch-action:none"':'')+'/><circle class="gh" cx="'+SX[i]+'" cy="'+cy(r)+'" r="16"/></g>';
