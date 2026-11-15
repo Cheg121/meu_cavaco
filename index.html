@@ -105,6 +105,8 @@ select{width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--li
 .pt.so{background:color-mix(in srgb,var(--solo) 20%,transparent);color:var(--solo)}
 .rs{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:8px 12px;margin:6px 0;text-align:left}
 .rs b{font-size:18px;color:var(--chord)}
+.pv{width:100%;display:flex;align-items:center;gap:10px;padding:8px 4px 2px;margin-top:6px;border-top:1px dashed var(--line)}
+.bt{display:flex;gap:6px;flex:none}
 </style>
 </head>
 <body>
@@ -196,7 +198,7 @@ function identify(f){
   out.sort(function(a,b){return a.s-b.s});
   return out.slice(0,5);
 }
-function searchHtml(st){
+function searchHtml(st,pk){
   var f=st.f,SN="DGBD";
   if(f.every(function(v){return v<0}))return '<p class="mut" style="margin-top:12px">Desenhe o acorde no braço.</p>';
   function cmp(v){
@@ -213,12 +215,13 @@ function searchHtml(st){
   var N=identify(f),h="",nm={};
   N.forEach(function(c){nm[c.n]=1});
   var exOnly=ds.filter(function(d){return d.c.ex&&!nm[d.k]}),near=ds.filter(function(d){return !d.c.ex&&!nm[d.k]});
-  function dcard(d){return '<div class="rs"><span><b>'+esc(d.k)+'</b> <span class="mut">variação '+(d.i+1)+' · '+(d.c.ex?'exato':'compatível ('+d.c.d.join(", ")+')')+'</span></span><button class="btn o" data-open="'+esc(d.k)+'" style="padding:6px 12px">Abrir</button></div>'}
+  function use(n){return pk?'<button class="btn" data-use="'+esc(n)+'" style="padding:6px 12px">Usar</button>':''}
+  function dcard(d){return '<div class="rs"><span><b>'+esc(d.k)+'</b> <span class="mut">variação '+(d.i+1)+' · '+(d.c.ex?'exato':'compatível ('+d.c.d.join(", ")+')')+'</span></span><span class="bt">'+use(d.k)+'<button class="btn o" data-open="'+esc(d.k)+'" style="padding:6px 12px">Abrir</button></span></div>'}
   h+='<p class="mut" style="margin:14px 0 4px">Este desenho forma</p>'+exOnly.map(dcard).join("");
   h+=N.length?N.map(function(c){
     var ex=vars(c.n).some(function(v){return cmp(v)});
-    return '<div class="rs"><span><b>'+esc(c.n)+'</b>'+(c.b?' <span class="mut">baixo em '+c.b+'</span>':'')+(ex?' <span class="mut">· já no dicionário</span>':'')+'</span>'
-      +(ex?'<button class="btn o" data-open="'+esc(c.n)+'" style="padding:6px 12px">Abrir</button>':'<button class="btn" data-add="'+esc(c.n)+'" style="padding:6px 12px">'+(S.chords[c.n]?"Adicionar variação":"Criar no dicionário")+'</button>')+'</div>';
+    return '<div class="rs"><span><b>'+esc(c.n)+'</b>'+(c.b?' <span class="mut">baixo em '+c.b+'</span>':'')+(ex?' <span class="mut">· já no dicionário</span>':'')+'</span><span class="bt">'+use(c.n)
+      +(ex?'<button class="btn o" data-open="'+esc(c.n)+'" style="padding:6px 12px">Abrir</button>':'<button class="btn o" data-add="'+esc(c.n)+'" style="padding:6px 12px">'+(S.chords[c.n]?"Adicionar variação":"Criar no dicionário")+'</button>')+'</span></div>';
   }).join(""):(exOnly.length?"":'<p class="mut">Nenhum acorde conhecido com essas notas (são necessárias ao menos 2 notas diferentes).</p>');
   if(near.length)h+='<p class="mut" style="margin:14px 0 4px">Formações aproximadas no seu dicionário</p>'+near.map(dcard).join("");
   return h;
@@ -236,7 +239,7 @@ function fixSt(s){
   for(i=0;i<4;i++)if(s.f[i]>0&&!ib(i)){if(s.fg[i]<1||s.fg[i]>4||used[s.fg[i]])s.fg[i]=0;else used[s.fg[i]]=1}
   for(i=0;i<4;i++)if(s.f[i]>0&&!ib(i)&&!s.fg[i]){for(k=1;k<4&&used[k];k++);s.fg[i]=k;used[k]=1}
 }
-function chordEditor(n,done,srch){
+function chordEditor(n,done,srch,pick){
   var o=sheet(),b=o.firstChild,ed=-1,st=blankSt(),sel=-1;
   function fromStr(x){var p=parseFrets(x),s=blankSt();if(!p)return s;s.f=p.slice(0,4);s.bar=p.bar||0;
     for(var i=0;i<4;i++)s.fg[i]=p.fing&&s.f[i]>0?+p.fing[i]:0;fixSt(s);return s}
@@ -275,7 +278,7 @@ function chordEditor(n,done,srch){
     b.querySelector("#pk").innerHTML=sel>=0&&st.f[sel]>0?'<p class="mut" style="margin:10px 0 4px">Corda '+"DGBD".charAt(sel)+' · casa '+st.f[sel]+(ib(sel)?' · faz parte da pestana (dedo 1)':' · escolha o dedo:')+'</p><div class="pkr">'+(ib(sel)?'':(st.bar?[2,3,4]:[1,2,3,4]).map(function(k){return '<button class="fb'+(st.fg[sel]===k?" on":"")+'" data-k="'+k+'">'+k+'</button>'}).join(""))+'<button class="btn d" id="pd" style="padding:8px 14px">Remover dedo</button></div>':'';
     b.querySelector("#ad").textContent=ed>=0?"Salvar alterações":"Adicionar";
     b.querySelector("#et").textContent=ed>=0?"Editando a variação "+(ed+1):"Toque numa casa para marcar um dedo. Toque num dedo para trocar o número, ou arraste-o para mover.";
-    if(srch){b.querySelector("#et").textContent="Marque as casas e use ○ nas cordas soltas. Corda com × vale como não informada: o app também mostra acordes do dicionário que a usam.";b.querySelector("#sr").innerHTML=searchHtml(st)}
+    if(srch){b.querySelector("#et").textContent="Marque as casas e use ○ nas cordas soltas. Corda com × vale como não informada: o app também mostra acordes do dicionário que a usam.";b.querySelector("#sr").innerHTML=searchHtml(st,!!pick)}
     vpu();
   }
   function vpu(){var t=sc.scrollHeight||1,h=mp.clientHeight;vp.style.top=(sc.scrollTop/t*h)+"px";vp.style.height=Math.max(10,sc.clientHeight/t*h)+"px"}
@@ -340,6 +343,7 @@ function chordEditor(n,done,srch){
     S.chords[n]=L;save();ed=-1;st=blankSt();sel=-1;b.querySelector("#er").textContent="";list();paint();
   };
   b.querySelector("#sr").addEventListener("click",function(e){
+    var u=e.target.closest("[data-use]");if(u){o.remove();if(pick)pick(u.dataset.use);return}
     var a=e.target.closest("[data-add]"),p=e.target.closest("[data-open]");
     if(a){var nm=a.dataset.add,x=toStr(),L=vars(nm).slice();if(L.indexOf(x)<0)L.push(x);S.chords[nm]=L;save();paint()}
     else if(p){o.remove();chordEditor(p.dataset.open,done)}
@@ -401,10 +405,9 @@ function find(id){return S.songs.filter(function(s){return s.id===id})[0]}
 function viewSong(s){
   var vids=(s.links||[]).map(function(u,i){return '<a class="yt" href="'+esc(u)+'" target="_blank" rel="noopener">▶ Vídeo '+(i+1)+' <span class="mut">'+esc(u.replace(/^https?:\/\/(www\.)?/,""))+'</span></a>'}).join("");
   app.innerHTML='<a class="back" href="#">‹ Todas as músicas</a><h1 style="margin:8px 0 2px">'+esc(s.title)+'</h1><div class="mut">'+esc(s.artist||"")+'</div>'
-   +'<div class="mut" style="margin-top:10px">Toque em uma cifra para ver o desenho no cavaquinho.</div>'
+   +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px"><span class="mut">Toque em uma cifra para ver o desenho no cavaquinho.</span><a class="btn o" href="#e-'+s.id+'" style="padding:8px 14px;font-size:14px;flex:none">✎ Editar</a></div>'
    +'<div class="cifra" id="cf">'+renderCifra(s.text||"")+'</div>'
-   +(vids?'<h2 style="font-size:18px;margin-top:20px">Vídeos</h2>'+vids:'')
-   +'<div class="row"><a class="btn o" href="#e-'+s.id+'">Editar</a></div>';
+   +(vids?'<h2 style="font-size:18px;margin-top:20px">Vídeos</h2>'+vids:'');
   $("#cf").addEventListener("click",function(e){var c=e.target.closest(".c");if(c)chordView(c.dataset.c,s,function(){route()},+c.dataset.o)});
 }
 function viewEdit(s){
@@ -427,7 +430,7 @@ function viewEdit(s){
   }
   $("#ch").addEventListener("click",function(e){var c=e.target.closest(".chip");if(c)chordView(c.dataset.c,s,chips)});
   $("#x").addEventListener("input",chips);chips();
-  var M=[],sel=null,vz=$("#vz"),ta=$("#x");
+  var M=[],sel=null,extra=[],vz=$("#vz"),ta=$("#x");
   function occOf(mi,t,name){var k=0;for(var i=0;i<M.length;i++){var T=toks(M[i].c);for(var j=0;j<T.length;j++){if(i===mi&&T[j].c===t)return k+1;if(T[j].n===name)k++}}return 0}
   function parseM(){var L=ta.value.split("\n"),o=[];for(var i=0;i<L.length;i++){
     if(isChordLine(L[i])){if(i+1<L.length&&!isChordLine(L[i+1])){o.push({c:L[i],l:L[i+1]});i++}else o.push({c:L[i],l:null})}else o.push({c:"",l:L[i]})}
@@ -447,8 +450,16 @@ function viewEdit(s){
     return '<div class="vc">'+(h||" ")+'</div><div>'+y+'</div>';
   }
   function draw(){
-    var N=Object.keys(S.chords).concat(chordNames(ta.value).filter(function(n){return !S.chords[n]}));
-    vz.innerHTML='<div class="pal">'+(N.length?N.map(function(n){return '<span class="chip pc'+(sel===n?" on":"")+(vars(n).length?"":" no")+'" data-n="'+esc(n)+'">'+esc(n)+'</span>'}).join(""):'<span class="mut">Crie acordes no Dicionário para arrastar aqui.</span>')+'</div><div class="vzb">'+M.map(rowHtml).join("")+'</div>';
+    var N=Object.keys(S.chords);
+    chordNames(ta.value).concat(extra).forEach(function(n){if(N.indexOf(n)<0)N.push(n)});
+    var pv="";
+    if(sel){
+      var V=vars(sel),i=Math.min((s.pv||{})[sel]||0,Math.max(V.length-1,0));
+      pv='<div class="pv">'+(V.length?'<div>'+dg(V[i],58)+'</div><div style="flex:1;text-align:left"><b style="color:var(--chord);font-size:18px">'+esc(sel)+'</b><div class="mut">Variação '+(i+1)+' de '+V.length+'</div></div>'+(V.length>1?'<button class="ib" data-pv="-1">‹</button><button class="ib" data-pv="1">›</button>':'')+'<button class="btn o" data-pe style="padding:6px 12px;font-size:13px">Editar</button>'
+        :'<div style="flex:1;text-align:left"><b style="color:var(--chord);font-size:18px">'+esc(sel)+'</b><div class="mut">Sem desenho no dicionário.</div></div><button class="btn o" data-pe style="padding:6px 12px;font-size:13px">Adicionar desenho</button>')+'</div>';
+    }
+    vz.innerHTML='<div class="pal">'+(N.length?N.map(function(n){return '<span class="chip pc'+(sel===n?" on":"")+(vars(n).length?"":" no")+'" data-n="'+esc(n)+'">'+esc(n)+'</span>'}).join(""):'<span class="mut">Crie acordes no Dicionário para arrastar aqui.</span>')
+      +'<span class="chip" id="vs" style="color:var(--ink)">✎ Buscar pelo desenho</span>'+pv+'</div><div class="vzb">'+M.map(rowHtml).join("")+'</div>';
   }
   function setMode(v){
     $("#m1").classList.toggle("on",!!v);$("#m2").classList.toggle("on",!v);
@@ -458,6 +469,12 @@ function viewEdit(s){
   $("#m1").onclick=function(){setMode(1)};$("#m2").onclick=function(){setMode(0)};
   vz.addEventListener("click",function(e){
     var c=e.target.closest(".lc");if(c&&sel)place(+c.dataset.m,+c.dataset.c,sel,null);
+  });
+  vz.addEventListener("click",function(e){
+    var a=e.target.closest("[data-pv]"),p=e.target.closest("[data-pe]"),q2=e.target.closest("#vs");
+    if(a&&sel){var V=vars(sel);if(V.length>1){s.pv=s.pv||{};var i=Math.min(s.pv[sel]||0,V.length-1);s.pv[sel]=(i+(+a.dataset.pv)+V.length)%V.length;save();draw()}}
+    else if(p&&sel)chordEditor(sel,draw);
+    else if(q2)chordEditor(null,draw,true,function(n){if(extra.indexOf(n)<0)extra.push(n);sel=n;draw()});
   });
   vz.addEventListener("pointerdown",function(e){
     var el=e.target.closest(".pc,.pt");if(!el)return;
