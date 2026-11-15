@@ -103,6 +103,8 @@ select{width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--li
 :root[data-theme="dark"]{--solo:#8CB4FF}
 .so{color:var(--solo);background:color-mix(in srgb,var(--solo) 18%,transparent);border-radius:4px;padding:0 2px;font-weight:500}
 .pt.so{background:color-mix(in srgb,var(--solo) 20%,transparent);color:var(--solo)}
+.rs{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:8px 12px;margin:6px 0;text-align:left}
+.rs b{font-size:18px;color:var(--chord)}
 </style>
 </head>
 <body>
@@ -176,6 +178,39 @@ function diagram(f,nums){
 function dg(str,w){var f=parseFrets(str);return f?diagram(f,(w||90)>=100).replace("<svg ",'<svg class="dg" style="width:'+(w||90)+'px" '):""}
 function sheet(){var o=document.createElement("div");o.className="ov";o.innerHTML='<div class="sh"></div>';document.body.appendChild(o);o.addEventListener("click",function(e){if(e.target===o)o.remove()});return o}
 
+/* identificação de acordes a partir do desenho (afinação D G B D) */
+var PCN=["C","C#","D","Eb","E","F","F#","G","Ab","A","Bb","B"],OPENM=[62,67,71,74];
+var TPL=[["",[0,4,7]],["m",[0,3,7]],["7",[0,4,7,10]],["7M",[0,4,7,11]],["m7",[0,3,7,10]],["m7(b5)",[0,3,6,10]],["dim",[0,3,6]],["dim7",[0,3,6,9]],["aug",[0,4,8]],["sus4",[0,5,7]],["sus2",[0,2,7]],["7sus4",[0,5,7,10]],["6",[0,4,7,9]],["m6",[0,3,7,9]],["add9",[0,2,4,7]],["madd9",[0,2,3,7]],["m7M",[0,3,7,11]],["9",[0,2,4,7,10]],["m9",[0,2,3,7,10]],["7M(9)",[0,2,4,7,11]],["6/9",[0,2,4,7,9]],["7(b9)",[0,1,4,7,10]]];
+function identify(f){
+  var notes=[];f.forEach(function(v,i){if(v>=0)notes.push(OPENM[i]+v)});
+  if(!notes.length)return [];
+  var bass=Math.min.apply(null,notes)%12,P={};notes.forEach(function(m){P[m%12]=1});
+  var pcs=Object.keys(P).map(Number);if(pcs.length<3)return [];
+  var out=[];
+  for(var r=0;r<12;r++)TPL.forEach(function(t,ti){
+    var T=t[1],rel=pcs.map(function(p){return (p-r+12)%12});
+    if(!rel.every(function(x){return T.indexOf(x)>-1}))return;
+    if(!T.every(function(x){return rel.indexOf(x)>-1||x===7}))return;
+    out.push({n:PCN[r]+t[0],b:bass!==r?PCN[bass]:"",s:(bass!==r?5:0)+ti+(rel.indexOf(7)<0&&T.indexOf(7)>-1?3:0)});
+  });
+  out.sort(function(a,b){return a.s-b.s});
+  return out.slice(0,5);
+}
+function searchHtml(st){
+  var f=st.f,key=f.join(",");
+  if(f.every(function(v){return v<0}))return '<p class="mut" style="margin-top:12px">Desenhe o acorde no braço.</p>';
+  var same=function(v){var p=parseFrets(v);return p&&p.slice(0,4).join(",")===key},ds=[];
+  Object.keys(S.chords).forEach(function(k){vars(k).forEach(function(v,i){if(same(v))ds.push({k:k,i:i})})});
+  var N=identify(f),h="";
+  if(ds.length)h+='<p class="mut" style="margin:14px 0 4px">No seu dicionário</p>'+ds.map(function(d){return '<div class="rs"><span><b>'+esc(d.k)+'</b> <span class="mut">variação '+(d.i+1)+'</span></span><button class="btn o" data-open="'+esc(d.k)+'" style="padding:6px 12px">Abrir</button></div>'}).join("");
+  h+='<p class="mut" style="margin:14px 0 4px">Este desenho forma</p>';
+  h+=N.length?N.map(function(c){
+    var ex=vars(c.n).some(same);
+    return '<div class="rs"><span><b>'+esc(c.n)+'</b>'+(c.b?' <span class="mut">baixo em '+c.b+'</span>':'')+(ex?' <span class="mut">· já no dicionário</span>':'')+'</span>'
+      +(ex?'<button class="btn o" data-open="'+esc(c.n)+'" style="padding:6px 12px">Abrir</button>':'<button class="btn" data-add="'+esc(c.n)+'" style="padding:6px 12px">'+(S.chords[c.n]?"Adicionar variação":"Criar no dicionário")+'</button>')+'</div>';
+  }).join(""):'<p class="mut">Nenhum acorde conhecido com essas notas (são necessárias ao menos 3 notas diferentes).</p>';
+  return h;
+}
 /* editor interativo de variações de um acorde (braço do cavaquinho: ré sol si ré) */
 var FH=46,NF=17,SX=[50,100,150,200];
 function blankSt(){return {f:[-1,-1,-1,-1],fg:[0,0,0,0],bar:0}}
@@ -189,20 +224,22 @@ function fixSt(s){
   for(i=0;i<4;i++)if(s.f[i]>0&&!ib(i)){if(s.fg[i]<1||s.fg[i]>4||used[s.fg[i]])s.fg[i]=0;else used[s.fg[i]]=1}
   for(i=0;i<4;i++)if(s.f[i]>0&&!ib(i)&&!s.fg[i]){for(k=1;k<4&&used[k];k++);s.fg[i]=k;used[k]=1}
 }
-function chordEditor(n,done){
+function chordEditor(n,done,srch){
   var o=sheet(),b=o.firstChild,ed=-1,st=blankSt(),sel=-1;
   function fromStr(x){var p=parseFrets(x),s=blankSt();if(!p)return s;s.f=p.slice(0,4);s.bar=p.bar||0;
     for(var i=0;i<4;i++)s.fg[i]=p.fing&&s.f[i]>0?+p.fing[i]:0;fixSt(s);return s}
   function toStr(){return st.f.map(function(v){return v<0?"x":v}).join(" ")+(st.bar?" b"+st.bar:"")+(st.fg.some(Boolean)?" f"+st.fg.join(""):"")}
   function ib(i){return st.bar&&st.f[i]===st.bar}
   function barFrets(){var c={};st.f.forEach(function(v){if(v>0)c[v]=(c[v]||0)+1});return Object.keys(c).filter(function(k){return c[k]>1}).map(Number)}
-  b.innerHTML='<h2>'+esc(n)+'</h2><div id="vl"></div><p class="mut" id="et" style="margin:14px 0 8px"></p>'
+  b.innerHTML='<h2>'+(srch?"Buscar pelo desenho":esc(n))+'</h2><div id="vl"></div><p class="mut" id="et" style="margin:14px 0 8px"></p>'
    +'<div class="fbw"><div class="mm"><button class="ib" id="up">▲</button><div class="mp" id="mp"><div class="vp" id="vp"></div></div><button class="ib" id="dn">▼</button></div>'
    +'<div><div class="fh"><span>D</span><span>G</span><span>B</span><span>D</span></div><div class="fsc" id="fs"><svg id="bd" width="250" height="'+(NF*FH+20)+'" viewBox="0 0 250 '+(NF*FH+20)+'"></svg></div><div class="ff" id="ff"></div></div></div>'
-   +'<div id="pk"></div><div id="bb"></div><p id="er" style="color:#C0392B;min-height:20px;margin:6px 0"></p><div class="row" style="justify-content:center;margin:0"><button class="btn" id="ad"></button><button class="btn o" id="nw">Limpar</button><button class="btn o" id="ok">Concluir</button></div>'
+   +'<div id="pk"></div><div id="bb"></div><div id="sr"></div><p id="er" style="color:#C0392B;min-height:20px;margin:6px 0"></p><div class="row" style="justify-content:center;margin:0"><button class="btn" id="ad"></button><button class="btn o" id="nw">Limpar</button><button class="btn o" id="ok">Concluir</button></div>'
    +'<div class="row" style="justify-content:center;margin:14px 0 0"><button class="btn d" id="dc">Excluir acorde do dicionário</button></div>';
   var sc=b.querySelector("#fs"),mp=b.querySelector("#mp"),vp=b.querySelector("#vp"),bd=b.querySelector("#bd");
+  if(srch)["#ad","#dc"].forEach(function(s){b.querySelector(s).style.display="none"});
   function list(){
+    if(srch)return;
     var V=vars(n);
     b.querySelector("#vl").innerHTML=V.length?'<div class="grid" style="margin:10px 0">'+V.map(function(v,i){return '<div class="cc" style="cursor:default'+(i===ed?';border-color:var(--acc)':'')+'">'+dg(v,70)+'<div style="margin-top:6px"><button class="btn o" data-e="'+i+'" style="padding:4px 10px;font-size:13px">Editar</button> <button class="btn d" data-d="'+i+'" style="padding:4px 10px;font-size:13px">Excluir</button></div></div>'}).join("")+'</div>':'<p class="mut">Nenhuma variação ainda.</p>';
     [].forEach.call(b.querySelectorAll("[data-e]"),function(x){x.onclick=function(){ed=+x.dataset.e;st=fromStr(vars(n)[ed]);sel=-1;paint();list();var m=Math.min.apply(null,st.f.filter(function(v){return v>0}).concat([1]));sc.scrollTop=(m-1)*FH}});
@@ -226,6 +263,7 @@ function chordEditor(n,done){
     b.querySelector("#pk").innerHTML=sel>=0&&st.f[sel]>0?'<p class="mut" style="margin:10px 0 4px">Corda '+"DGBD".charAt(sel)+' · casa '+st.f[sel]+(ib(sel)?' · faz parte da pestana (dedo 1)':' · escolha o dedo:')+'</p><div class="pkr">'+(ib(sel)?'':(st.bar?[2,3,4]:[1,2,3,4]).map(function(k){return '<button class="fb'+(st.fg[sel]===k?" on":"")+'" data-k="'+k+'">'+k+'</button>'}).join(""))+'<button class="btn d" id="pd" style="padding:8px 14px">Remover dedo</button></div>':'';
     b.querySelector("#ad").textContent=ed>=0?"Salvar alterações":"Adicionar";
     b.querySelector("#et").textContent=ed>=0?"Editando a variação "+(ed+1):"Toque numa casa para marcar um dedo. Toque num dedo para trocar o número, ou arraste-o para mover.";
+    if(srch){b.querySelector("#et").textContent="Marque as casas e use ○ nas cordas soltas: o app mostra qual acorde é.";b.querySelector("#sr").innerHTML=searchHtml(st)}
     vpu();
   }
   function vpu(){var t=sc.scrollHeight||1,h=mp.clientHeight;vp.style.top=(sc.scrollTop/t*h)+"px";vp.style.height=Math.max(10,sc.clientHeight/t*h)+"px"}
@@ -289,6 +327,11 @@ function chordEditor(n,done){
     if(ed>=0)L[ed]=x;else if(L.indexOf(x)<0)L.push(x);
     S.chords[n]=L;save();ed=-1;st=blankSt();sel=-1;b.querySelector("#er").textContent="";list();paint();
   };
+  b.querySelector("#sr").addEventListener("click",function(e){
+    var a=e.target.closest("[data-add]"),p=e.target.closest("[data-open]");
+    if(a){var nm=a.dataset.add,x=toStr(),L=vars(nm).slice();if(L.indexOf(x)<0)L.push(x);S.chords[nm]=L;save();paint()}
+    else if(p){o.remove();chordEditor(p.dataset.open,done)}
+  });
   list();paint();
 }
 /* visualizar/escolher a variação de um acorde dentro de uma música (por ocorrência) */
@@ -476,7 +519,7 @@ function viewEdit(s){
 }
 function viewChords(){
   app.innerHTML='<h1>Dicionário de acordes</h1><input class="search" id="cs" type="search" placeholder="Buscar acorde (ex.: Bb7M)" value="'+esc(cq)+'">'
-   +'<div class="row" style="margin-bottom:0"><input id="nn" placeholder="Novo acorde (ex.: Bb7M)" style="flex:1;min-width:0"><button class="btn" id="na">Adicionar</button></div><p id="ne" style="color:#C0392B;min-height:20px;margin:6px 0 0"></p><div id="cg"></div>';
+   +'<div class="row" style="margin-bottom:0"><input id="nn" placeholder="Novo acorde (ex.: Bb7M)" style="flex:1;min-width:0"><button class="btn" id="na">Adicionar</button></div><p id="ne" style="color:#C0392B;min-height:20px;margin:6px 0 0"></p><button class="btn o" id="ds" style="width:100%">✎ Buscar pelo desenho no braço</button><div id="cg"></div>';
   $("#cs").addEventListener("input",function(){cq=this.value;cg()});
   $("#cg").addEventListener("click",function(e){var c=e.target.closest(".cc");if(c)chordEditor(c.dataset.n,cg)});
   $("#na").onclick=function(){
@@ -485,6 +528,7 @@ function viewChords(){
     if(!S.chords[n]){S.chords[n]=[];save()}
     $("#nn").value="";$("#ne").textContent="";cg();chordEditor(n,cg);
   };
+  $("#ds").onclick=function(){chordEditor(null,cg,true)};
   cg();
 }
 /* repertórios */
