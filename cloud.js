@@ -62,6 +62,11 @@ function push(S) {
     known.__c = cj;
     F.setDoc(F.doc(fs, "users", user.uid, "meta", "chords"), { json: cj }).catch(fail);
   }
+  const rj = JSON.stringify(S.reps || []);
+  if (known.__r !== rj) {
+    known.__r = rj;
+    F.setDoc(F.doc(fs, "users", user.uid, "meta", "reps"), { json: rj }).catch(fail);
+  }
   keep();
 }
 
@@ -98,6 +103,17 @@ function start(u) {
       known.__c = snap.data().json;
     }
     firstC = false;
+    cv.commit(); push(S);
+  }, fail));
+  let firstR = true;
+  unsubs.push(F.onSnapshot(F.doc(fs, "users", u.uid, "meta", "reps"), snap => {
+    const S = cv.state();
+    if (snap.exists()) {
+      let r = []; try { r = JSON.parse(snap.data().json); } catch (e) {}
+      if (firstR) { const ids = {}; r.forEach(x => ids[x.id] = 1); r = r.concat((S.reps || []).filter(x => !ids[x.id])); }
+      S.reps = r; known.__r = snap.data().json;
+    }
+    firstR = false;
     cv.commit(); push(S);
   }, fail));
 }

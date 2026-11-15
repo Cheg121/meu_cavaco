@@ -91,22 +91,26 @@ textarea.cf{font:500 14px/1.35 "DM Mono",ui-monospace,monospace;white-space:pre;
 .gh2{position:fixed;z-index:60;transform:translate(-50%,-140%);padding:6px 12px;border-radius:12px;background:var(--chord);color:var(--bg);font:600 15px "DM Mono",monospace;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.35)}
 .trash{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:55;padding:14px 22px;border-radius:16px;background:#C0392B;color:#fff;font-weight:600}
 .trash.hit{background:#8E2A20;outline:3px solid #fff}
+select{width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit}
+.hd{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;padding:14px 8px 14px 14px;color:var(--mut);font-size:20px;line-height:1}
+.num{color:var(--chord);font-weight:700;min-width:22px;text-align:center;font-size:15px}
+.ri.dragging{opacity:.65;border-color:var(--acc);box-shadow:0 6px 18px rgba(0,0,0,.3)}
 </style>
 </head>
 <body>
 <header id="top"><button class="ib" id="mb" aria-label="Menu"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><span class="brand">Meu Cavaco</span><div id="cl"></div></header>
 <div id="sc"></div>
-<nav id="dr"><div class="t">Meu Cavaco</div><a href="#" data-r="">♪ Músicas</a><a href="#fav" data-r="fav">★ Favoritas</a><a href="#acordes" data-r="acordes">🎸 Dicionário de acordes</a></nav>
+<nav id="dr"><div class="t">Meu Cavaco</div><a href="#" data-r="">♪ Músicas</a><a href="#rep" data-r="rep">♫ Repertórios</a><a href="#acordes" data-r="acordes">🎸 Dicionário de acordes</a></nav>
 <main id="app"></main>
 <script>
 (function(){
-var S={songs:[],chords:{}},q="",cq="",fav=false,vm="m";
+var S={songs:[],chords:{},reps:[]},q="",cq="",fav=false,vm="m",cr=null,dragId=null;
 var $=function(s){return document.querySelector(s)};
 var app=$("#app");
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
 function norm(s){return String(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase()}
 function uid(){return Math.random().toString(36).slice(2,8)}
-function loadLocal(){try{var j=localStorage.getItem("cavaco");if(j)S=JSON.parse(j)}catch(e){}try{if(localStorage.getItem("cavaco-vm")==="a")vm="a"}catch(e){}}
+function loadLocal(){try{var j=localStorage.getItem("cavaco");if(j)S=JSON.parse(j)}catch(e){}try{if(localStorage.getItem("cavaco-vm")==="a")vm="a"}catch(e){}S.reps=S.reps||[]}
 function save(){
   try{localStorage.setItem("cavaco",JSON.stringify(S))}catch(e){}
   try{if(window.cavaco.onSave)window.cavaco.onSave(S)}catch(e){}
@@ -120,7 +124,7 @@ window.cavaco={onSave:null,paint:null,
   commit:function(){
     try{localStorage.setItem("cavaco",JSON.stringify(S))}catch(e){}
     var h=location.hash;
-    if($("#res"))res();else if($("#cg"))cg();
+    if($("#res"))res();else if($("#cg"))cg();else if($("#rl")){if(repById(cr)){repSel();repDraw()}else viewReps()}else if($("#rp"))viewReps();
     else if(/^#s-/.test(h)){var y=window.scrollY;route();window.scrollTo(0,y)}
   }};
 
@@ -274,7 +278,7 @@ function res(){
     var k;
     if(A)k=s.artist||"Sem artista";else{k=norm(s.title).charAt(0).toUpperCase();if(!/[A-Z]/.test(k))k="#"}
     if(k!==last){h+='<div class="letter">'+esc(k)+(A?' · '+cnt[k]:'')+'</div>';last=k}
-    h+='<div class="item"><a href="#s-'+s.id+'"><b>'+esc(s.title)+'</b>'+(A?'':'<span>'+esc(s.artist||"Sem artista")+'</span>')+'</a><button class="st'+(s.fav?" on":"")+'" data-id="'+s.id+'" aria-label="Favoritar">'+(s.fav?"★":"☆")+'</button></div>';
+    h+='<div class="item"><a href="#s-'+s.id+'"><b>'+esc(s.title)+'</b>'+(A?'':'<span>'+esc(s.artist||"Sem artista")+'</span>')+'</a></div>';
   });
   if(!h)h='<div class="empty">'+(fav&&!n?"Nenhuma favorita ainda. Toque na estrela de uma música.":S.songs.length?"Nada encontrado para essa busca.":"Sua lista está vazia. Toque em Nova música para começar.")+'</div>';
   $("#res").innerHTML=h;
@@ -282,13 +286,12 @@ function res(){
 function find(id){return S.songs.filter(function(s){return s.id===id})[0]}
 function viewSong(s){
   var vids=(s.links||[]).map(function(u,i){return '<a class="yt" href="'+esc(u)+'" target="_blank" rel="noopener">▶ Vídeo '+(i+1)+' <span class="mut">'+esc(u.replace(/^https?:\/\/(www\.)?/,""))+'</span></a>'}).join("");
-  app.innerHTML='<a class="back" href="#">‹ Todas as músicas</a><div style="display:flex;align-items:center"><h1 style="margin:8px 0 2px;flex:1">'+esc(s.title)+'</h1><button class="st'+(s.fav?" on":"")+'" id="fv" aria-label="Favoritar">'+(s.fav?"★":"☆")+'</button></div><div class="mut">'+esc(s.artist||"")+'</div>'
+  app.innerHTML='<a class="back" href="#">‹ Todas as músicas</a><h1 style="margin:8px 0 2px">'+esc(s.title)+'</h1><div class="mut">'+esc(s.artist||"")+'</div>'
    +'<div class="mut" style="margin-top:10px">Toque em uma cifra para ver o desenho no cavaquinho.</div>'
    +'<div class="cifra" id="cf">'+renderCifra(s.text||"")+'</div>'
    +(vids?'<h2 style="font-size:18px;margin-top:20px">Vídeos</h2>'+vids:'')
    +'<div class="row"><a class="btn o" href="#e-'+s.id+'">Editar</a></div>';
   $("#cf").addEventListener("click",function(e){var c=e.target.closest(".c");if(c)chordView(c.dataset.c,s,function(){route()})});
-  $("#fv").onclick=function(){s.fav=!s.fav;save();this.textContent=s.fav?"★":"☆";this.classList.toggle("on",!!s.fav)};
 }
 function viewEdit(s){
   var isNew=!s;s=s||{id:uid(),title:"",artist:"",text:"",links:[],pv:{}};
@@ -424,11 +427,84 @@ function viewChords(){
   };
   cg();
 }
+/* repertórios */
+function repById(id){return (S.reps||[]).filter(function(r){return r.id===id})[0]}
+function viewReps(){
+  S.reps=S.reps||[];
+  if(!cr)try{cr=localStorage.getItem("cavaco-rep")}catch(e){}
+  if(!repById(cr))cr=S.reps[0]?S.reps[0].id:null;
+  app.innerHTML='<h1>Repertórios</h1><div class="row" style="margin-top:0"><select id="rs" style="flex:1;min-width:0"></select><button class="btn" id="rc">+ Criar repertório</button></div><div id="rp"></div>';
+  $("#rs").onchange=function(){cr=this.value;try{localStorage.setItem("cavaco-rep",cr)}catch(e){}repBody()};
+  $("#rc").onclick=function(){
+    var k=1,N=S.reps.map(function(r){return r.name});while(N.indexOf("Repertório #"+k)>-1)k++;
+    var r={id:uid(),name:"Repertório #"+k,songs:[]};S.reps.push(r);cr=r.id;
+    try{localStorage.setItem("cavaco-rep",cr)}catch(e){}save();repBody();
+    var i=$("#rn");if(i){i.focus();i.select()}
+  };
+  repBody();
+}
+function repSel(){
+  var s=$("#rs");if(!s)return;
+  s.innerHTML=S.reps.length?S.reps.map(function(r){return '<option value="'+r.id+'"'+(r.id===cr?" selected":"")+'>'+esc(r.name)+' ('+r.songs.filter(find).length+')</option>'}).join(""):'<option>Nenhum repertório</option>';
+}
+function repBody(){
+  var box=$("#rp");repSel();
+  if(!repById(cr)){box.innerHTML='<div class="empty">Nenhum repertório ainda. Toque em Criar repertório.</div>';return}
+  box.innerHTML='<label for="rn">Nome do repertório</label><input id="rn" value="'+esc(repById(cr).name)+'">'
+   +'<div class="row"><button class="btn o" id="ra">+ Adicionar músicas</button><button class="btn d" id="rd">Excluir repertório</button></div><div id="rl"></div>';
+  $("#rn").onchange=function(){var r=repById(cr),v=this.value.trim();if(!v){this.value=r.name;return}r.name=v;save();repSel()};
+  $("#ra").onclick=addSongs;
+  $("#rd").onclick=function(){
+    var d=this;if(!d.dataset.ok){d.dataset.ok=1;d.textContent="Toque de novo para excluir";return}
+    S.reps=S.reps.filter(function(r){return r.id!==cr});cr=null;save();viewReps();
+  };
+  var L=$("#rl");
+  L.addEventListener("click",function(e){var x=e.target.closest("[data-rm]");if(!x)return;var r=repById(cr);r.songs=r.songs.filter(function(i){return i!==x.dataset.rm});save();repSel();repDraw()});
+  L.addEventListener("pointerdown",function(e){
+    var hd=e.target.closest(".hd");if(!hd)return;e.preventDefault();
+    var el=hd.parentNode;el.classList.add("dragging");
+    function mv(ev){
+      var t=document.elementFromPoint(L.getBoundingClientRect().left+24,ev.clientY),it=t&&t.closest(".ri");
+      if(it&&it!==el){var after=el.compareDocumentPosition(it)&Node.DOCUMENT_POSITION_FOLLOWING;L.insertBefore(el,after?it.nextSibling:it);
+        [].forEach.call(L.querySelectorAll(".num"),function(n,i){n.textContent=i+1})}
+      if(ev.clientY<110)window.scrollBy(0,-14);else if(ev.clientY>window.innerHeight-110)window.scrollBy(0,14);
+    }
+    function up(){
+      document.removeEventListener("pointermove",mv);document.removeEventListener("pointerup",up);document.removeEventListener("pointercancel",up);
+      var r=repById(cr),o=[].map.call(L.querySelectorAll(".ri"),function(x){return x.dataset.id});
+      r.songs=o.concat(r.songs.filter(function(i){return o.indexOf(i)<0}));save();repDraw();
+    }
+    document.addEventListener("pointermove",mv);document.addEventListener("pointerup",up);document.addEventListener("pointercancel",up);
+  });
+  repDraw();
+}
+function repDraw(){
+  var r=repById(cr),L=$("#rl");if(!r||!L)return;
+  var A=r.songs.map(find).filter(Boolean);
+  L.innerHTML=A.length?A.map(function(s,i){return '<div class="item ri" data-id="'+s.id+'"><span class="hd" aria-label="Arrastar para reordenar">⠿</span><span class="num">'+(i+1)+'</span><a href="#s-'+s.id+'"><b>'+esc(s.title)+'</b><span>'+esc(s.artist||"Sem artista")+'</span></a><button class="st" data-rm="'+s.id+'" aria-label="Remover do repertório">✕</button></div>'}).join(""):'<div class="empty">Repertório vazio. Toque em Adicionar músicas.</div>';
+}
+function addSongs(){
+  var o=sheet(),b=o.firstChild,qq="";b.style.textAlign="left";
+  b.innerHTML='<h2>Adicionar músicas</h2><input class="search" id="as" type="search" placeholder="Buscar música ou artista" style="margin:12px 0;text-align:left;font-family:inherit"><div id="al"></div><div class="row" style="justify-content:center;margin-bottom:0"><button class="btn" id="ak">Concluir</button></div>';
+  function dr(){
+    var r=repById(cr),n=norm(qq.trim()),L=S.songs.filter(function(s){return !n||norm(s.title).indexOf(n)>-1||norm(s.artist||"").indexOf(n)>-1});
+    L.sort(function(a,c){return norm(a.title).localeCompare(norm(c.title))});
+    b.querySelector("#al").innerHTML=L.length?L.map(function(s){var on=r.songs.indexOf(s.id)>-1;return '<div class="item" style="cursor:pointer" data-id="'+s.id+'"><div style="flex:1;padding:10px 14px"><b style="display:block;font-size:16px">'+esc(s.title)+'</b><span>'+esc(s.artist||"Sem artista")+'</span></div><span class="st'+(on?" on":"")+'" style="font-size:22px;padding:10px 16px">'+(on?"✓":"+")+'</span></div>'}).join(""):'<div class="empty">Nenhuma música encontrada.</div>';
+  }
+  b.querySelector("#as").addEventListener("input",function(){qq=this.value;dr()});
+  b.querySelector("#al").addEventListener("click",function(e){
+    var it=e.target.closest(".item");if(!it)return;var r=repById(cr),i=r.songs.indexOf(it.dataset.id);
+    if(i>-1)r.songs.splice(i,1);else r.songs.push(it.dataset.id);
+    save();dr();repSel();repDraw();
+  });
+  b.querySelector("#ak").onclick=function(){o.remove()};
+  dr();
+}
 function route(){
   var h=location.hash.slice(1);window.scrollTo(0,0);document.body.classList.remove("mo");
-  [].forEach.call(document.querySelectorAll("#dr a"),function(a){a.classList.toggle("on",a.dataset.r===(h==="fav"||h==="acordes"?h:/^(s|e)-|^new$/.test(h)?"":h))});
+  [].forEach.call(document.querySelectorAll("#dr a"),function(a){a.classList.toggle("on",a.dataset.r===(h==="rep"||h==="acordes"?h:/^(s|e)-|^new$/.test(h)?"":h))});
   if(h==="new")return viewEdit(null);
-  if(h==="fav")return viewList(true);
+  if(h==="rep")return viewReps();
   if(h==="acordes")return viewChords();
   var m=/^(s|e)-(\w+)$/.exec(h),s=m&&find(m[2]);
   if(!s)return viewList(false);
