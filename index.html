@@ -129,6 +129,11 @@ select{width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--li
 <script>
 (function(){
 var CHANGELOG=[
+ {v:"1.3",d:"16/11/2026",n:[
+  "Novo ícone do app: cavaquinho em fundo verde.",
+  "Pestana ao arrastar: no editor de acordes, arraste um dedo para o lado, na mesma casa, para criar a pestana nas cordas do caminho.",
+  "Nomes de acordes aceitam os símbolos º, °, ⁰, ø e Δ (por exemplo D#º, Bø, CΔ).",
+  "A identificação pelo desenho reconhece mais acordes: 7(#9), 7(b5), 7(#5), 7M(b5), 7M(#5), e o diminuto passa a aparecer como º."]},
  {v:"1.2",d:"15/11/2026",n:[
   "Busca automática de letra mais ampla: agora consulta primeiro o LRCLIB (base aberta, sem cadastro) e, se não achar, o lyrics.ovh. Também tenta o título sem o que está entre parênteses.",
   "Os botões de busca manual agora abrem o Google com o nome da música e do artista (Google, Cifra Club e Letras.mus.br), que sempre funciona. A letra aparece no topo do Google para copiar e colar."]},
@@ -170,7 +175,7 @@ window.cavaco={onSave:null,paint:null,
     else if(/^#s-/.test(h)){var y=window.scrollY;route();window.scrollTo(0,y)}
   }};
 
-var CH=/^[A-G][#b]?(maj|min|dim|aug|sus|add|m|M|º|°|\+)?[0-9]*(M|maj|m|sus[24]?|add[0-9]+|dim|aug|º|°|[#b+-][0-9]+|\([^)]*\))*(\/([A-G][#b]?|[0-9]+))?$/;
+var CH=/^[A-G][#b]?(maj|min|dim|aug|sus|add|m|M|[º°⁰˚øØΔ]|\+)?[0-9]*(M|maj|m|sus[24]?|add[0-9]+|dim|aug|[º°⁰˚øØΔ]|[#b+-][0-9]+|\([^)]*\))*(\/([A-G][#b]?|[0-9]+))?$/;
 var SO=/^\(?[0-9]{1,2}([-–~\/.hpbrx^][0-9]{1,2})*\)?$/,LB=/^(\(?[0-9]+x\)?|\[[^\]]+\]|(intro|solo|ponte|refr[aã]o|final|riff|interl[uú]dio|base)[:.]?)$/i;
 function tk(t){return CH.test(t)?"c":SO.test(t)?"s":LB.test(t)?"l":""}
 function isChordLine(l){if(!l.trim())return false;var t=l.trim().split(/\s+/),c=0;for(var i=0;i<t.length;i++){var k=tk(t[i]);if(!k)return false;if(k!=="l")c++}return c>0}
@@ -212,7 +217,7 @@ function sheet(){var o=document.createElement("div");o.className="ov";o.innerHTM
 
 /* identificação de acordes a partir do desenho (afinação D G B D) */
 var PCN=["C","C#","D","Eb","E","F","F#","G","Ab","A","Bb","B"],OPENM=[62,67,71,74];
-var TPL=[["",[0,4,7]],["m",[0,3,7]],["7",[0,4,7,10]],["7M",[0,4,7,11]],["m7",[0,3,7,10]],["m7(b5)",[0,3,6,10]],["dim",[0,3,6]],["dim7",[0,3,6,9]],["aug",[0,4,8]],["sus4",[0,5,7]],["sus2",[0,2,7]],["7sus4",[0,5,7,10]],["6",[0,4,7,9]],["m6",[0,3,7,9]],["add9",[0,2,4,7]],["madd9",[0,2,3,7]],["m7M",[0,3,7,11]],["9",[0,2,4,7,10]],["m9",[0,2,3,7,10]],["7M(9)",[0,2,4,7,11]],["6/9",[0,2,4,7,9]],["7(b9)",[0,1,4,7,10]]];
+var TPL=[["",[0,4,7]],["m",[0,3,7]],["7",[0,4,7,10]],["7M",[0,4,7,11]],["m7",[0,3,7,10]],["m7(b5)",[0,3,6,10]],["dim",[0,3,6]],["º",[0,3,6,9]],["aug",[0,4,8]],["sus4",[0,5,7]],["sus2",[0,2,7]],["7sus4",[0,5,7,10]],["6",[0,4,7,9]],["m6",[0,3,7,9]],["add9",[0,2,4,7]],["madd9",[0,2,3,7]],["m7M",[0,3,7,11]],["9",[0,2,4,7,10]],["m9",[0,2,3,7,10]],["7M(9)",[0,2,4,7,11]],["6/9",[0,2,4,7,9]],["7(b9)",[0,1,4,7,10]],["7(#9)",[0,3,4,7,10]],["7(b5)",[0,4,6,10]],["7(#5)",[0,4,8,10]],["7M(b5)",[0,4,6,11]],["7M(#5)",[0,4,8,11]]];
 function identify(f){
   var notes=[];f.forEach(function(v,i){if(v>=0)notes.push(OPENM[i]+v)});
   if(!notes.length)return [];
@@ -307,7 +312,7 @@ function chordEditor(n,done,srch,pick){
     b.querySelector("#bb").innerHTML=bf.length?'<div style="margin-top:8px">'+bf.map(function(k){return '<span class="chip'+(st.bar===k?" on":"")+'" data-b="'+k+'">Pestana na casa '+k+'</span>'}).join("")+'</div>':'';
     b.querySelector("#pk").innerHTML=sel>=0&&st.f[sel]>0?'<p class="mut" style="margin:10px 0 4px">Corda '+"DGBD".charAt(sel)+' · casa '+st.f[sel]+(ib(sel)?' · faz parte da pestana (dedo 1)':' · escolha o dedo:')+'</p><div class="pkr">'+(ib(sel)?'':(st.bar?[2,3,4]:[1,2,3,4]).map(function(k){return '<button class="fb'+(st.fg[sel]===k?" on":"")+'" data-k="'+k+'">'+k+'</button>'}).join(""))+'<button class="btn d" id="pd" style="padding:8px 14px">Remover dedo</button></div>':'';
     b.querySelector("#ad").textContent=ed>=0?"Salvar alterações":"Adicionar";
-    b.querySelector("#et").textContent=ed>=0?"Editando a variação "+(ed+1):"Toque numa casa para marcar um dedo. Toque num dedo para trocar o número, ou arraste-o para mover.";
+    b.querySelector("#et").textContent=ed>=0?"Editando a variação "+(ed+1):"Toque numa casa para marcar um dedo. Toque num dedo para trocar o número. Arraste-o para outra casa para mover, ou para o lado (na mesma casa) para fazer a pestana.";
     if(srch){b.querySelector("#et").textContent="Marque as casas e use ○ nas cordas soltas. Corda com × vale como não informada: o app também mostra acordes do dicionário que a usam.";b.querySelector("#sr").innerHTML=searchHtml(st,!!pick)}
     vpu();
   }
@@ -342,6 +347,7 @@ function chordEditor(n,done,srch,pick){
       if(tc){
         var ts=+tc.dataset.s,tr=+tc.dataset.f;
         if(ts===s)st.f[s]=tr;
+        else if(tr===st.f[s]){var lo=Math.min(s,ts),hi=Math.max(s,ts);for(var k=lo;k<=hi;k++){if(st.f[k]!==tr){st.f[k]=tr;st.fg[k]=0}}st.bar=tr}
         else if(st.f[ts]<=0){st.f[ts]=tr;st.fg[ts]=st.fg[s];st.f[s]=-1;st.fg[s]=0;s=ts}
         sel=s;fixSt(st);
       }
