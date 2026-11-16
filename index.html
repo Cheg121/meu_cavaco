@@ -129,6 +129,9 @@ select{width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--li
 <script>
 (function(){
 var CHANGELOG=[
+ {v:"1.2",d:"15/11/2026",n:[
+  "Busca automática de letra mais ampla: agora consulta primeiro o LRCLIB (base aberta, sem cadastro) e, se não achar, o lyrics.ovh. Também tenta o título sem o que está entre parênteses.",
+  "Os botões de busca manual agora abrem o Google com o nome da música e do artista (Google, Cifra Club e Letras.mus.br), que sempre funciona. A letra aparece no topo do Google para copiar e colar."]},
  {v:"1.1",d:"15/11/2026",n:[
   "Posicionar acordes no celular: agora dá para arrastar um acorde já colocado na letra e arrastá-lo para a faixa vermelha para excluir.",
   "Lupa na hora de arrastar: a letra aparece ampliada acima do dedo, mostrando exatamente em qual letra o acorde vai cair.",
@@ -566,7 +569,7 @@ function viewEdit(s){
    +'<label for="a">Cantor ou grupo</label><input id="a" value="'+esc(s.artist||"")+'">'
    +'<label for="x">Letra com cifras</label><div class="mut" style="margin-bottom:6px">Arraste os acordes para cima da letra (ou toque no acorde e depois no ponto da letra). No modo Texto, escreva a linha das cifras acima da letra, como no Cifra Club.</div>'
    +'<div class="seg"><button id="m1">Posicionar acordes</button><button id="m2">Texto</button></div>'
-   +'<div class="row" style="margin:6px 0"><button class="btn o" id="bl">Buscar letra</button><a class="btn o" id="lc" target="_blank" rel="noopener">Cifra Club</a><a class="btn o" id="ll" target="_blank" rel="noopener">Letras.mus.br</a><a class="btn o" id="lv" target="_blank" rel="noopener">Vagalume</a></div><p id="lm" class="mut" style="margin:0 0 6px"></p>'
+   +'<div class="row" style="margin:6px 0"><button class="btn o" id="bl">Buscar letra</button><a class="btn o" id="lg" target="_blank" rel="noopener">Google</a><a class="btn o" id="lc" target="_blank" rel="noopener">Cifra Club</a><a class="btn o" id="ll" target="_blank" rel="noopener">Letras.mus.br</a></div><p id="lm" class="mut" style="margin:0 0 6px"></p>'
    +'<textarea class="cf" id="x" spellcheck="false" placeholder="G        D\nLetra da música aqui">'+esc(s.text||"")+'</textarea>'
    +'<div id="vz" style="display:none"></div>'
    +'<label>Acordes desta música</label><div class="mut">Toque em um acorde para escolher a variação do dicionário.</div><div id="ch"></div>'
@@ -671,30 +674,44 @@ function viewEdit(s){
     save();location.hash="s-"+s.id;
   };
   function clean(t){return t.replace(/\s*[\(\[][^\)\]]*[\)\]]\s*/g," ").replace(/\s+(feat|ft|part)\.?\s.*$/i,"").replace(/\s+/g," ").trim()}
+  function gq(extra){return "https://www.google.com/search?q="+encodeURIComponent((extra+" "+clean($("#t").value)+" "+$("#a").value).trim())}
   function links(){
-    var k=encodeURIComponent((clean($("#t").value)+" "+$("#a").value).trim());
-    $("#lc").href="https://www.cifraclub.com.br/?q="+k;
-    $("#ll").href="https://www.letras.mus.br/?q="+k;$("#lv").href="https://www.vagalume.com.br/search?q="+k;
+    $("#lg").href=gq("letra");
+    $("#lc").href=gq("cifra site:cifraclub.com.br");
+    $("#ll").href=gq("letra site:letras.mus.br");
   }
   $("#t").addEventListener("input",links);$("#a").addEventListener("input",links);links();
-  function getLyrics(ar,t){
+  function tmo(u){
     var c=new AbortController(),tm=setTimeout(function(){c.abort()},15000);
-    return fetch("https://api.lyrics.ovh/v1/"+encodeURIComponent(ar)+"/"+encodeURIComponent(t),{signal:c.signal})
-      .then(function(r){if(!r.ok)throw 0;return r.json()})
-      .then(function(j){
-        var l=(j&&j.lyrics||"").replace(/\r\n?/g,"\n").replace(/^Paroles de la chanson[^\n]*\n+/i,"").replace(/\n{3,}/g,"\n\n").trim();
-        if(!l)throw 0;return l;
-      }).then(function(l){clearTimeout(tm);return l},function(e){clearTimeout(tm);throw e});
+    return fetch(u,{signal:c.signal}).then(function(r){clearTimeout(tm);if(!r.ok)throw 0;return r.json()},function(e){clearTimeout(tm);throw e});
+  }
+  function tidy(l){return String(l||"").replace(/\r\n?/g,"\n").replace(/^Paroles de la chanson[^\n]*\n+/i,"").replace(/\n{3,}/g,"\n\n").trim()}
+  function lrc(ar,t){
+    return tmo("https://lrclib.net/api/search?track_name="+encodeURIComponent(t)+"&artist_name="+encodeURIComponent(ar))
+      .then(function(L){return Array.isArray(L)&&L.length?L:tmo("https://lrclib.net/api/search?q="+encodeURIComponent(ar+" "+t))})
+      .then(function(L){
+        var r=(Array.isArray(L)?L:[]).filter(function(x){return x&&x.plainLyrics&&!x.instrumental}),a0=norm(ar).split(" ")[0];
+        var best=r.filter(function(x){return norm(x.artistName||"").indexOf(a0)>-1})[0]||r[0];
+        var l=best&&tidy(best.plainLyrics);if(!l)throw 0;return l;
+      });
+  }
+  function ovh(ar,t){
+    return tmo("https://api.lyrics.ovh/v1/"+encodeURIComponent(ar)+"/"+encodeURIComponent(t)).then(function(j){var l=tidy(j&&j.lyrics);if(!l)throw 0;return l});
+  }
+  function findLyrics(ar,t){
+    var t2=clean(t),ts=t2&&t2!==t?[t,t2]:[t],chain=Promise.reject(0);
+    ts.forEach(function(x){chain=chain.catch(function(){return lrc(ar,x)})});
+    ts.forEach(function(x){chain=chain.catch(function(){return ovh(ar,x)})});
+    return chain;
   }
   $("#bl").onclick=function(){
     var t=$("#t").value.trim(),ar=$("#a").value.trim(),m=$("#lm"),x=$("#x");
     if(!t||!ar){m.textContent="Preencha a música e o cantor ou grupo para buscar a letra.";return}
     if(x.value.trim()){m.textContent="Já existe texto na letra. Apague-o antes de buscar.";return}
     m.textContent="Buscando letra...";
-    var t2=clean(t);
-    getLyrics(ar,t).catch(function(){if(t2&&t2!==t)return getLyrics(ar,t2);throw 0})
+    findLyrics(ar,t)
       .then(function(l){x.value=l;chips();setMode(1);m.textContent="Letra encontrada. Agora coloque as cifras nas linhas acima de cada trecho."})
-      .catch(function(){m.textContent="Não achei essa letra. Use o Cifra Club (já tem as cifras) ou Letras/Vagalume para copiar e colar aqui."});
+      .catch(function(){m.textContent="Não achei essa letra nas bases abertas. Use o botão Google (a letra aparece no topo da busca) ou Cifra Club, copie e cole aqui."});
   };
   var d=$("#dl");
   if(d)d.onclick=function(){
