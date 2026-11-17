@@ -129,6 +129,10 @@ select{width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--li
 <script>
 (function(){
 var CHANGELOG=[
+ {v:"1.4",d:"16/11/2026",n:[
+  "Corrigido: ao salvar uma música editada, as alterações às vezes eram perdidas e voltavam ao estado de antes. A edição agora trabalha numa cópia e grava no catálogo atual.",
+  "Rascunho automático: se o app fechar no meio da edição, ao abrir de novo a mesma música para editar as alterações são recuperadas (com opção de descartar).",
+  "Acordes podem ser arrastados para depois do fim da letra: cada linha ganha espaço extra à direita. A tela rola sozinha ao arrastar perto das bordas."]},
  {v:"1.3",d:"16/11/2026",n:[
   "Novo ícone do app: cavaquinho em fundo verde.",
   "Pestana ao arrastar: no editor de acordes, arraste um dedo para o lado, na mesma casa, para criar a pestana nas cordas do caminho.",
@@ -568,9 +572,12 @@ function viewSong(s){
     as.on=true;as.acc=0;as.last=performance.now();this.textContent="⏸";as.raf=requestAnimationFrame(asStep);
   };
 }
-function viewEdit(s){
-  var isNew=!s;s=s||{id:uid(),title:"",artist:"",text:"",links:[],pv:{}};
-  app.innerHTML='<a class="back" href="'+(isNew?'#':'#s-'+s.id)+'">‹ Voltar</a><h1>'+(isNew?"Nova música":"Editar música")+'</h1>'
+function viewEdit(s0){
+  var isNew=!s0,rec=false,s=s0?JSON.parse(JSON.stringify(s0)):{id:uid(),title:"",artist:"",text:"",links:[],pv:{}};
+  s.pv=s.pv||{};
+  try{var dr=JSON.parse(localStorage.getItem("cavaco-draft")||"null");
+    if(dr&&dr.isNew===isNew&&(isNew||dr.id===s.id)){s.id=dr.id;s.title=dr.t;s.artist=dr.a;s.text=dr.x;s.links=String(dr.l||"").split("\n").filter(Boolean);s.pv=dr.pv||{};rec=true}}catch(e){}
+  app.innerHTML='<a class="back" href="'+(isNew?'#':'#s-'+s.id)+'">‹ Voltar</a><h1>'+(isNew?"Nova música":"Editar música")+'</h1>'+(rec?'<div class="rs" id="dbn"><span>Rascunho recuperado: alterações ainda não salvas.</span><button class="btn o" id="dd" style="padding:6px 12px">Descartar</button></div>':'')
    +'<label for="t">Música</label><input id="t" value="'+esc(s.title)+'">'
    +'<label for="a">Cantor ou grupo</label><input id="a" value="'+esc(s.artist||"")+'">'
    +'<label for="x">Letra com cifras</label><div class="mut" style="margin-bottom:6px">Arraste os acordes para cima da letra (ou toque no acorde e depois no ponto da letra). No modo Texto, escreva a linha das cifras acima da letra, como no Cifra Club.</div>'
@@ -587,7 +594,7 @@ function viewEdit(s){
   }
   $("#ch").addEventListener("click",function(e){var c=e.target.closest(".chip");if(c)chordView(c.dataset.c,s,chips)});
   $("#x").addEventListener("input",chips);chips();
-  var M=[],sel=null,extra=[],vz=$("#vz"),ta=$("#x");
+  var M=[],sel=null,extra=[],W=0,vz=$("#vz"),ta=$("#x");
   function occOf(mi,t,name){var k=0;for(var i=0;i<M.length;i++){var T=toks(M[i].c);for(var j=0;j<T.length;j++){if(i===mi&&T[j].c===t)return k+1;if(T[j].n===name)k++}}return 0}
   function parseM(){var L=ta.value.split("\n"),o=[];for(var i=0;i<L.length;i++){
     if(isChordLine(L[i])){if(i+1<L.length&&!isChordLine(L[i+1])){o.push({c:L[i],l:L[i+1]});i++}else o.push({c:L[i],l:null})}else o.push({c:"",l:L[i]})}
@@ -595,6 +602,10 @@ function viewEdit(s){
   function toks(c){var a=[];c.replace(/\S+/g,function(t,i){a.push({c:i,n:t});return t});return a}
   function build(a){a.sort(function(x,y){return x.c-y.c});var s="";a.forEach(function(t){var c=Math.max(t.c,s.length?s.length+1:0);s+=" ".repeat(c-s.length)+t.n});return s}
   function ser(){var o=[];M.forEach(function(m){if(m.c.trim()!=="")o.push(m.c.replace(/\s+$/,""));if(m.l!==null)o.push(m.l)});return o.join("\n")}
+  function draft(){try{localStorage.setItem("cavaco-draft",JSON.stringify({id:s.id,isNew:isNew,t:$("#t").value,a:$("#a").value,x:ta.value,l:$("#l").value,pv:s.pv,at:Date.now()}))}catch(e){}}
+  ["#t","#a","#x","#l"].forEach(function(q){$(q).addEventListener("input",draft)});
+  $(".back").addEventListener("click",function(){try{localStorage.removeItem("cavaco-draft")}catch(e){}});
+  var dd=$("#dd");if(dd)dd.onclick=function(){try{localStorage.removeItem("cavaco-draft")}catch(e){}route()};
   function commit(){ta.value=ser();chips();draw()}
   function place(mi,col,name,src){
     if(src)M[src.m].c=build(toks(M[src.m].c).filter(function(x){return x.c!==src.t}));
@@ -602,11 +613,13 @@ function viewEdit(s){
   }
   function rowHtml(m,i){
     var h="",p=0;m.c.replace(/\S+/g,function(t,x){h+=" ".repeat(x-p)+'<span class="pt'+(CH.test(t)?"":" so")+'" data-m="'+i+'" data-t="'+x+'">'+esc(t)+'</span>';p=x+t.length;return t});
-    var tx=m.l||"",n=Math.max(tx.length+1,26),y="";
+    var tx=m.l||"",n=Math.max(tx.length,W,26)+10,y="";
     for(var k=0;k<n;k++)y+='<span class="lc" data-m="'+i+'" data-c="'+k+'">'+(k<tx.length?esc(tx.charAt(k)):" ")+'</span>';
     return '<div class="vc">'+(h||" ")+'</div><div>'+y+'</div>';
   }
   function draw(){
+    W=0;M.forEach(function(m){W=Math.min(90,Math.max(W,(m.l||"").length,m.c.replace(/\s+$/,"").length))});
+    draft();
     var N=[];
     chordNames(ta.value).concat(extra).forEach(function(n){if(N.indexOf(n)<0)N.push(n)});
     N.sort(function(a,b){return a.localeCompare(b)});
@@ -638,7 +651,7 @@ function viewEdit(s){
   vz.addEventListener("pointerdown",function(e){
     var el=e.target.closest(".pc,.pt");if(!el)return;
     var pt=el.classList.contains("pt"),name=pt?el.textContent:el.dataset.n,src=pt?{m:+el.dataset.m,t:+el.dataset.t}:null;
-    var x0=e.clientX,y0=e.clientY,drag=false,gh=null,tr=null,hit=null;
+    var x0=e.clientX,y0=e.clientY,drag=false,gh=null,tr=null,hit=null,iv=0,lx=0,ly=0;
     e.preventDefault();
     function lens(c){
       var q='<span class="lc2">'+esc(name)+'</span>';
@@ -655,14 +668,15 @@ function viewEdit(s){
     function mv(ev){
       if(!drag&&Math.hypot(ev.clientX-x0,ev.clientY-y0)>7){
         drag=true;gh=document.createElement("div");gh.className="lp";document.body.appendChild(gh);lens(null);
+        iv=setInterval(function(){var vb=vz.querySelector(".vzb");if(vb){var r=vb.getBoundingClientRect();if(lx>r.right-44)vb.scrollLeft+=12;else if(lx<r.left+44)vb.scrollLeft-=12}if(ly<130)window.scrollBy(0,-12);else if(ly>window.innerHeight-90)window.scrollBy(0,12)},16);
         if(src){tr=document.createElement("div");tr.className="trash";tr.textContent="Solte aqui para remover";document.body.appendChild(tr)}
       }
-      if(drag){gh.style.left=ev.clientX+"px";gh.style.top=ev.clientY+"px";over(ev)}
+      if(drag){lx=ev.clientX;ly=ev.clientY;gh.style.left=lx+"px";gh.style.top=ly+"px";over(ev)}
     }
     function up(ev){
       document.removeEventListener("pointermove",mv);document.removeEventListener("pointerup",up);document.removeEventListener("pointercancel",up);
       var t0=document.elementFromPoint(ev.clientX,ev.clientY),onT=!!(t0&&t0.closest(".trash"));
-      if(gh)gh.remove();if(tr)tr.remove();if(hit)hit.classList.remove("hit");
+      clearInterval(iv);if(gh)gh.remove();if(tr)tr.remove();if(hit)hit.classList.remove("hit");
       if(!drag){if(src){if(!el.classList.contains("so"))chordView(name,s,draw,occOf(src.m,src.t,name))}else{sel=sel===name?null:name;draw()}return}
       var c=t0&&t0.closest(".lc");
       if(c)place(+c.dataset.m,+c.dataset.c,name,src);
@@ -676,7 +690,9 @@ function viewEdit(s){
     if(!t){$("#er").textContent="Digite o nome da música.";return}
     s.title=t;s.artist=$("#a").value.trim();s.text=$("#x").value.replace(/\s+$/,"");
     s.links=$("#l").value.split("\n").map(function(u){return u.trim()}).filter(function(u){return /^https?:\/\//.test(u)});
-    if(isNew)S.songs.push(s);
+    var cur=isNew?null:find(s.id);
+    if(cur){cur.title=s.title;cur.artist=s.artist;cur.text=s.text;cur.links=s.links;cur.pv=s.pv}else S.songs.push(s);
+    try{localStorage.removeItem("cavaco-draft")}catch(e){}
     save();location.hash="s-"+s.id;
   };
   function clean(t){return t.replace(/\s*[\(\[][^\)\]]*[\)\]]\s*/g," ").replace(/\s+(feat|ft|part)\.?\s.*$/i,"").replace(/\s+/g," ").trim()}
@@ -722,7 +738,7 @@ function viewEdit(s){
   var d=$("#dl");
   if(d)d.onclick=function(){
     if(!d.dataset.ok){d.dataset.ok=1;d.textContent="Toque de novo para excluir";return}
-    S.songs=S.songs.filter(function(x){return x.id!==s.id});save();location.hash="";
+    S.songs=S.songs.filter(function(x){return x.id!==s.id});try{localStorage.removeItem("cavaco-draft")}catch(e){}save();location.hash="";
   };
 }
 function viewChords(){
