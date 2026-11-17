@@ -2,7 +2,7 @@ import { firebaseConfig } from "./firebase-config.js";
 const B = "https://www.gstatic.com/firebasejs/10.14.1/";
 const cv = window.cavaco;
 const on = firebaseConfig && firebaseConfig.apiKey && !/COLE/.test(firebaseConfig.apiKey);
-let A, F, auth, fs, user = null, authKnown = false, ready = false, msg = "", unsubs = [], known = {};
+let A, F, auth, fs, user = null, authKnown = false, ready = false, msg = "", unsubs = [], known = {}, engines = [], recd = 0;
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 let pop = false;
@@ -57,86 +57,114 @@ function login() {
   });
 }
 
-function keep() { if (user) try { localStorage.setItem("cavaco-known-" + user.uid, JSON.stringify(known)); } catch (e) {} }
+function keep() { if (user) try { localStorage.setItem("cavaco-known2-" + user.uid, JSON.stringify(known)); } catch (e) {} }
 function fail(e) { msg = "Erro ao sincronizar (" + (e && e.code || "?") + ")."; paint(); }
-function stop() { unsubs.forEach(f => f()); unsubs = []; cv.onSave = null; ready = false; }
+function stop() { unsubs.forEach(f => f()); unsubs = []; engines = []; cv.onSave = null; ready = false; }
 
-function push(S) {
-  if (!user) return;
-  const ids = {};
-  S.songs.forEach(s => {
-    ids[s.id] = 1;
-    const j = JSON.stringify(s);
-    if (known[s.id] !== j) {
-      known[s.id] = j;
-      F.setDoc(F.doc(fs, "users", user.uid, "songs", s.id), { json: j, t: Date.now() }).catch(fail);
+/* Cada música, cada acorde e cada repertório é um documento próprio.
+   Regras de segurança: nada é apagado na nuvem antes de o servidor confirmar o estado,
+   e um aparelho com dados locais nunca é "zerado" por uma cópia vazia. */
+const norm = v => Array.isArray(v) ? v : (v ? [v] : []);
+const AD = {
+  songs: { pref: "s:",
+    keys: () => cv.state().songs.map(s => s.id),
+    get: k => JSON.stringify(cv.state().songs.find(s => s.id === k)),
+    put: (k, j) => { let o; try { o = JSON.parse(j); } catch (e) { return; } const S = cv.state(), i = S.songs.findIndex(s => s.id === k); if (i < 0) S.songs.push(o); else S.songs[i] = o; },
+    del: k => { const S = cv.state(); S.songs = S.songs.filter(s => s.id !== k); } },
+  chords: { pref: "c:",
+    keys: () => Object.keys(cv.state().chords),
+    get: k => JSON.stringify(norm(cv.state().chords[k])),
+    put: (k, j) => { try { cv.state().chords[k] = JSON.parse(j); } catch (e) {} },
+    del: k => { delete cv.state().chords[k]; } },
+  reps: { pref: "r:",
+    keys: () => (cv.state().reps || []).map(r => r.id),
+    get: k => JSON.stringify((cv.state().reps || []).find(r => r.id === k)),
+    put: (k, j) => { let o; try { o = JSON.parse(j); } catch (e) { return; } const S = cv.state(); S.reps = S.reps || []; const i = S.reps.findIndex(r => r.id === k); if (i < 0) S.reps.push(o); else S.reps[i] = o; },
+    del: k => { const S = cv.state(); S.reps = (S.reps || []).filter(r => r.id !== k); } }
+};
+
+function engine(u, col, a) {
+  const cref = F.collection(fs, "users", u.uid, col), P = a.pref;
+  let rec = false;
+  const did = k => encodeURIComponent(k);
+  const kof = d => { const x = d.data(); return x.k !== undefined ? x.k : decodeURIComponent(d.id); };
+  function push() {
+    const keys = a.keys(), has = {};
+    keys.forEach(k => {
+      has[k] = 1;
+      const j = a.get(k);
+      if (known[P + k] !== j) { known[P + k] = j; F.setDoc(F.doc(fs, "users", u.uid, col, did(k)), { k, json: j, t: Date.now() }).catch(fail); }
+    });
+    const mine = Object.keys(known).filter(x => x.indexOf(P) === 0);
+    if (!keys.length && mine.length > 1) return;   // estado local vazio e suspeito: não apaga nada na nuvem
+    mine.forEach(x => {
+      const k = x.slice(P.length);
+      if (!has[k]) { delete known[x]; F.deleteDoc(F.doc(fs, "users", u.uid, col, did(k))).catch(fail); }
+    });
+  }
+  const unsub = F.onSnapshot(cref, { includeMetadataChanges: true }, snap => {
+    if (!rec && !snap.metadata.fromCache) {
+      const ids = {};
+      snap.docs.forEach(d => { ids[kof(d)] = 1; });
+      a.keys().forEach(k => { if (known[P + k] && !ids[k]) a.del(k); });          // apagado em outro aparelho
+      Object.keys(known).forEach(x => { if (x.indexOf(P) === 0 && !ids[x.slice(P.length)]) delete known[x]; });
+      rec = true; recd++; if (recd >= 3) ready = true;
     }
+    snap.docChanges().forEach(c => {
+      const k = kof(c.doc);
+      if (c.type === "removed") { a.del(k); delete known[P + k]; return; }
+      const j = c.doc.data().json;
+      a.put(k, j); known[P + k] = j;
+    });
+    cv.commit(); push(); keep(); paint();
+  }, fail);
+  return { push, unsub };
+}
+
+/* importa o formato antigo (um documento só para acordes e outro para repertórios), uma única vez */
+function mergeChords(S, r) {
+  let n = 0;
+  Object.keys(r || {}).forEach(k => {
+    const v = norm(r[k]).filter(x => typeof x === "string"), cur = S.chords[k] === undefined ? null : norm(S.chords[k]).slice();
+    if (!cur) { S.chords[k] = v; n++; }
+    else { let add = 0; v.forEach(x => { if (cur.indexOf(x) < 0) { cur.push(x); add++; } }); if (add) { S.chords[k] = cur; n++; } }
   });
-  Object.keys(known).forEach(id => {
-    if (id.slice(0, 2) === "__" || ids[id]) return;
-    delete known[id];
-    F.deleteDoc(F.doc(fs, "users", user.uid, "songs", id)).catch(fail);
-  });
-  const cj = JSON.stringify(S.chords || {});
-  if (known.__c !== cj) {
-    known.__c = cj;
-    F.setDoc(F.doc(fs, "users", user.uid, "meta", "chords"), { json: cj }).catch(fail);
+  return n;
+}
+function mergeReps(S, r) {
+  let n = 0; S.reps = S.reps || [];
+  (Array.isArray(r) ? r : []).forEach(x => { if (x && x.id && !S.reps.some(y => y.id === x.id)) { S.reps.push(x); n++; } });
+  return n;
+}
+async function legacy(u) {
+  const flag = "cavaco-leg-" + u.uid;
+  try { if (localStorage.getItem(flag)) return; } catch (e) {}
+  const S = cv.state(); let nc = 0, nr = 0;
+  const take = (name, j) => { let r; try { r = JSON.parse(j); } catch (e) { return; } if (name === "chords") nc += mergeChords(S, r); else nr += mergeReps(S, r); };
+  for (const name of ["chords", "reps"]) {   // primeiro o cache do aparelho (pode ter a versão antiga)
+    try { const sc = await F.getDocFromCache(F.doc(fs, "users", u.uid, "meta", name)); if (sc.exists()) take(name, sc.data().json); } catch (e) {}
   }
-  const rj = JSON.stringify(S.reps || []);
-  if (known.__r !== rj) {
-    known.__r = rj;
-    F.setDoc(F.doc(fs, "users", user.uid, "meta", "reps"), { json: rj }).catch(fail);
+  let okServer = true;
+  for (const name of ["chords", "reps"]) {
+    try {
+      const ss = await Promise.race([F.getDoc(F.doc(fs, "users", u.uid, "meta", name)), new Promise((_, rj) => setTimeout(() => rj(new Error("t")), 6000))]);
+      if (ss.exists()) take(name, ss.data().json);
+    } catch (e) { okServer = false; }
   }
-  keep();
+  if (okServer) try { localStorage.setItem(flag, "1"); } catch (e) {}
+  if (nc || nr) { cv.commit(); if (cv.notice) cv.notice("Recuperei " + nc + " acorde(s) e " + nr + " repertório(s) de uma cópia antiga da sua conta."); }
 }
 
 function start(u) {
-  try { known = JSON.parse(localStorage.getItem("cavaco-known-" + u.uid) || "{}"); } catch (e) { known = {}; }
-  let reconciled = false, firstC = true;
-  cv.onSave = push;
-  unsubs.push(F.onSnapshot(F.collection(fs, "users", u.uid, "songs"), { includeMetadataChanges: true }, snap => {
-    const S = cv.state();
-    if (!reconciled && !snap.metadata.fromCache) {
-      // músicas apagadas em outro aparelho enquanto este estava fechado
-      const ids = {};
-      snap.docs.forEach(d => ids[d.id] = 1);
-      S.songs = S.songs.filter(s => ids[s.id] || !known[s.id]);
-      Object.keys(known).forEach(id => { if (id.slice(0, 2) !== "__" && !ids[id]) delete known[id]; });
-      reconciled = true; ready = true;
-    }
-    snap.docChanges().forEach(c => {
-      const id = c.doc.id;
-      if (c.type === "removed") { S.songs = S.songs.filter(s => s.id !== id); delete known[id]; return; }
-      const d = c.doc.data();
-      let s; try { s = JSON.parse(d.json); } catch (e) { return; }
-      const i = S.songs.findIndex(x => x.id === id);
-      if (i < 0) S.songs.push(s); else S.songs[i] = s;
-      known[id] = d.json;
-    });
-    cv.commit(); push(S); paint();
-  }, fail));
-  unsubs.push(F.onSnapshot(F.doc(fs, "users", u.uid, "meta", "chords"), snap => {
-    const S = cv.state();
-    if (snap.exists()) {
-      let r = {}; try { r = JSON.parse(snap.data().json); } catch (e) {}
-      S.chords = firstC ? Object.assign({}, S.chords, r) : r;
-      known.__c = snap.data().json;
-    }
-    firstC = false;
-    cv.commit(); push(S);
-  }, fail));
-  let firstR = true;
-  unsubs.push(F.onSnapshot(F.doc(fs, "users", u.uid, "meta", "reps"), snap => {
-    const S = cv.state();
-    if (snap.exists()) {
-      let r = []; try { r = JSON.parse(snap.data().json); } catch (e) {}
-      if (firstR) { const ids = {}; r.forEach(x => ids[x.id] = 1); r = r.concat((S.reps || []).filter(x => !ids[x.id])); }
-      S.reps = r; known.__r = snap.data().json;
-    }
-    firstR = false;
-    cv.commit(); push(S);
-  }, fail));
+  try { known = JSON.parse(localStorage.getItem("cavaco-known2-" + u.uid) || "{}"); } catch (e) { known = {}; }
+  recd = 0;
+  engines = [engine(u, "songs", AD.songs), engine(u, "chords", AD.chords), engine(u, "reps", AD.reps)];
+  unsubs = engines.map(e => e.unsub);
+  cv.onSave = () => { engines.forEach(e => e.push()); keep(); };
+  legacy(u).then(() => { engines.forEach(e => e.push()); keep(); }).catch(() => {});
 }
+
+if (window.__cloudTest) window.__cloudTest({ engine, AD, legacy, mergeChords, ctx: o => { A = o.A; F = o.F; fs = o.fs; user = o.user; known = o.known || {}; recd = 0; }, known: () => known });
 
 async function init() {
   try {

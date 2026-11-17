@@ -124,11 +124,16 @@ select{width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--li
 <body>
 <header id="top"><button class="ib" id="mb" aria-label="Menu"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><span class="brand">Meu Cavaco</span><button class="ib" id="tm" aria-label="Alternar tema claro/escuro" style="font-size:22px"></button><div id="cl"></div></header>
 <div id="sc"></div>
-<nav id="dr"><div class="t">Meu Cavaco</div><a href="#" data-r="">♪ Músicas</a><a href="#rep" data-r="rep">♫ Repertórios</a><a href="#acordes" data-r="acordes">🎸 Dicionário de acordes</a><div style="border-top:1px solid var(--line);margin:12px 0 6px"></div><a href="#" id="rcv">⇩ Receber por código</a><a href="#" id="vn"></a></nav>
+<nav id="dr"><div class="t">Meu Cavaco</div><a href="#" data-r="">♪ Músicas</a><a href="#rep" data-r="rep">♫ Repertórios</a><a href="#acordes" data-r="acordes">🎸 Dicionário de acordes</a><div style="border-top:1px solid var(--line);margin:12px 0 6px"></div><a href="#" id="rcv">⇩ Receber por código</a><a href="#" id="bkp">⛁ Backup</a><a href="#" id="vn"></a></nav>
 <main id="app"></main>
 <script>
 (function(){
 var CHANGELOG=[
+ {v:"1.5",d:"17/11/2026",n:[
+  "Corrigido: o dicionário de acordes e os repertórios podiam sumir ao entrar com a conta em outro aparelho. Agora cada acorde e cada repertório sincroniza individualmente, e nada é apagado na nuvem enquanto o aparelho não confirmar o estado do servidor.",
+  "Recuperação: ao abrir esta versão, o app tenta recuperar acordes e repertórios de cópias antigas guardadas no aparelho e na conta, e avisa quando encontra algo.",
+  "Menu ⛁ Backup: baixa e restaura um arquivo com tudo, e o app guarda cópias automáticas neste aparelho (incluindo a maior versão já vista).",
+  "Dicionário de acordes: nova lista dos acordes usados nas músicas que ainda não têm desenho, para reconstruir mais rápido."]},
  {v:"1.4",d:"16/11/2026",n:[
   "Corrigido: ao salvar uma música editada, as alterações às vezes eram perdidas e voltavam ao estado de antes. A edição agora trabalha numa cópia e grava no catálogo atual.",
   "Rascunho automático: se o app fechar no meio da edição, ao abrir de novo a mesma música para editar as alterações são recuperadas (com opção de descartar).",
@@ -165,12 +170,14 @@ function loadLocal(){try{var j=localStorage.getItem("cavaco");if(j)S=JSON.parse(
 function save(){
   try{localStorage.setItem("cavaco",JSON.stringify(S))}catch(e){}
   try{if(window.cavaco.onSave)window.cavaco.onSave(S)}catch(e){}
+  autoBk();
 }
 function cg(){
   var n=norm(cq.trim()),N=Object.keys(S.chords).filter(function(k){return !n||norm(k).indexOf(n)>-1}).sort(function(a,b){return a.localeCompare(b)});
   $("#cg").innerHTML=N.length?'<div class="grid">'+N.map(function(k){var V=vars(k);return '<div class="cc" data-n="'+esc(k)+'"><b>'+esc(k)+'</b>'+(V.length?dg(V[0],64):'<p class="mut">sem desenho</p>')+'<span class="mut">'+V.length+(V.length===1?' variação':' variações')+'</span></div>'}).join("")+'</div>':'<div class="empty">'+(Object.keys(S.chords).length?"Nenhum acorde encontrado.":"O dicionário está vazio. Adicione um acorde acima.")+'</div>';
 }
 window.cavaco={onSave:null,paint:null,
+  notice:function(t){var o=sheet(),b=o.firstChild;b.innerHTML='<h2>Aviso</h2><p>'+esc(t)+'</p><div class="row" style="justify-content:center"><button class="btn" id="nk">OK</button></div>';b.querySelector("#nk").onclick=function(){o.remove()}},
   state:function(){return S},
   commit:function(){
     try{localStorage.setItem("cavaco",JSON.stringify(S))}catch(e){}
@@ -524,6 +531,59 @@ function startup(){
   try{if(localStorage.getItem("cavaco-seenv")!==APP_V)setTimeout(whatsNew,700)}catch(e){}
 }
 
+/* backup */
+function exportData(){return JSON.stringify({app:"meu-cavaco",v:1,at:Date.now(),songs:S.songs,chords:S.chords,reps:S.reps||[]})}
+function autoBk(){
+  try{
+    var n=S.songs.length+Object.keys(S.chords).length+(S.reps||[]).length;if(!n)return;
+    if(n>(+localStorage.getItem("cavaco-bk-bn")||0)){localStorage.setItem("cavaco-bk-best",exportData());localStorage.setItem("cavaco-bk-bn",String(n))}
+    var now=Date.now();
+    if(now-(+localStorage.getItem("cavaco-bk-t")||0)>=3600000){
+      var i=(+localStorage.getItem("cavaco-bk-i")||0)%3;
+      localStorage.setItem("cavaco-bk-"+i,exportData());localStorage.setItem("cavaco-bk-i",String((i+1)%3));localStorage.setItem("cavaco-bk-t",String(now));
+    }
+  }catch(e){}
+}
+function mergeData(d){
+  var ns=0,nc=0,nr=0,ids={},rid={};
+  S.songs.forEach(function(s){ids[s.id]=1});S.reps=S.reps||[];S.reps.forEach(function(r){rid[r.id]=1});
+  (d.songs||[]).forEach(function(s){if(s&&s.id&&s.title&&!ids[s.id]){S.songs.push(s);ns++}});
+  Object.keys(d.chords||{}).forEach(function(k){
+    var v=d.chords[k],V=Array.isArray(v)?v:(v?[v]:[]),had=S.chords[k]!==undefined,L=vars(k).slice(),add=0;
+    V.forEach(function(x){if(typeof x==="string"&&parseFrets(x)&&L.indexOf(x)<0){L.push(x);add++}});
+    if(add||!had){S.chords[k]=L;nc++}
+  });
+  (d.reps||[]).forEach(function(r){if(r&&r.id&&!rid[r.id]){S.reps.push(r);nr++}});
+  save();return {ns:ns,nc:nc,nr:nr};
+}
+function backupSheet(){
+  var o=sheet(),b=o.firstChild;b.style.textAlign="left";
+  function info(j){try{var d=JSON.parse(j);return d.songs.length+" músicas · "+Object.keys(d.chords||{}).length+" acordes · "+(d.reps||[]).length+" repertórios · "+new Date(d.at).toLocaleString("pt-BR")}catch(e){return null}}
+  var slots=[["Maior versão já guardada neste aparelho","cavaco-bk-best"],["Cópia automática 1","cavaco-bk-0"],["Cópia automática 2","cavaco-bk-1"],["Cópia automática 3","cavaco-bk-2"]],h2="";
+  slots.forEach(function(s){var j=null;try{j=localStorage.getItem(s[1])}catch(e){}var t=j&&info(j);if(t)h2+='<div class="rs"><span><b style="font-size:15px;color:var(--ink)">'+s[0]+'</b><br><span class="mut">'+t+'</span></span><button class="btn o" data-k="'+s[1]+'" style="padding:6px 12px">Restaurar</button></div>'});
+  b.innerHTML='<h2>Backup</h2><p class="mut">Baixe um arquivo com tudo (músicas, acordes e repertórios) e guarde em um lugar seguro. Restaurar junta o conteúdo do backup ao que já existe, sem apagar nada.</p>'
+   +'<div class="row" style="margin:8px 0"><button class="btn" id="bd">Baixar backup</button><button class="btn o" id="br">Restaurar de arquivo</button></div><input type="file" id="bf" accept=".json,application/json" hidden><p id="bm" class="mut"></p>'
+   +(h2?'<p class="mut" style="margin:12px 0 4px">Cópias automáticas neste aparelho</p>'+h2:'<p class="mut">Ainda não há cópias automáticas neste aparelho.</p>')
+   +'<div class="row" style="justify-content:center;margin-bottom:0"><button class="btn o" id="bx">Fechar</button></div>';
+  var bm=b.querySelector("#bm");
+  function done(r){bm.textContent="Restaurado: "+r.ns+" música(s), "+r.nc+" acorde(s) e "+r.nr+" repertório(s) adicionados."}
+  b.querySelector("#bx").onclick=function(){o.remove()};
+  b.querySelector("#bd").onclick=function(){
+    var u=URL.createObjectURL(new Blob([exportData()],{type:"application/json"})),a=document.createElement("a");
+    a.href=u;a.download="meu-cavaco-backup.json";document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},4000);
+    bm.textContent="Backup baixado. Guarde o arquivo em um lugar seguro.";
+  };
+  b.querySelector("#br").onclick=function(){b.querySelector("#bf").click()};
+  b.querySelector("#bf").onchange=function(e){
+    var f=e.target.files[0];if(!f)return;var r=new FileReader();
+    r.onload=function(){try{var d=JSON.parse(r.result);if(!d||(!d.songs&&!d.chords&&!d.reps))throw 0;done(mergeData(d));route()}catch(x){bm.textContent="Esse arquivo não parece ser um backup do Meu Cavaco."}};
+    r.readAsText(f);e.target.value="";
+  };
+  [].forEach.call(b.querySelectorAll("[data-k]"),function(x){x.onclick=function(){
+    try{done(mergeData(JSON.parse(localStorage.getItem(x.dataset.k))));route()}catch(e){bm.textContent="Não consegui ler essa cópia."}
+  }});
+}
+
 /* telas */
 function viewList(f){
   fav=f;
@@ -743,7 +803,7 @@ function viewEdit(s0){
 }
 function viewChords(){
   app.innerHTML='<h1>Dicionário de acordes</h1><input class="search" id="cs" type="search" placeholder="Buscar acorde (ex.: Bb7M)" value="'+esc(cq)+'">'
-   +'<div class="row" style="margin-bottom:0"><input id="nn" placeholder="Novo acorde (ex.: Bb7M)" style="flex:1;min-width:0"><button class="btn" id="na">Adicionar</button></div><p id="ne" style="color:#C0392B;min-height:20px;margin:6px 0 0"></p><button class="btn o" id="ds" style="width:100%">✎ Buscar pelo desenho no braço</button><div id="cg"></div>';
+   +'<div class="row" style="margin-bottom:0"><input id="nn" placeholder="Novo acorde (ex.: Bb7M)" style="flex:1;min-width:0"><button class="btn" id="na">Adicionar</button></div><p id="ne" style="color:#C0392B;min-height:20px;margin:6px 0 0"></p><button class="btn o" id="ds" style="width:100%">✎ Buscar pelo desenho no braço</button><div id="cg"></div><div id="cm"></div>';
   $("#cs").addEventListener("input",function(){cq=this.value;cg()});
   $("#cg").addEventListener("click",function(e){var c=e.target.closest(".cc");if(c)chordEditor(c.dataset.n,cg)});
   $("#na").onclick=function(){
@@ -752,8 +812,14 @@ function viewChords(){
     if(!S.chords[n]){S.chords[n]=[];save()}
     $("#nn").value="";$("#ne").textContent="";cg();chordEditor(n,cg);
   };
+  function cmiss(){
+    var u={};S.songs.forEach(function(s){chordNames(s.text||"").forEach(function(n){if(!vars(n).length)u[n]=1})});
+    var N=Object.keys(u).sort(function(a,b){return a.localeCompare(b)}),el=$("#cm");if(!el)return;
+    el.innerHTML=N.length?'<p class="mut" style="margin:18px 0 4px">Acordes usados nas suas músicas que ainda não têm desenho ('+N.length+'). Toque para desenhar:</p>'+N.map(function(n){return '<span class="chip no" data-m="'+esc(n)+'">'+esc(n)+'</span>'}).join(""):"";
+  }
+  $("#cm").addEventListener("click",function(e){var c=e.target.closest("[data-m]");if(c)chordEditor(c.dataset.m,function(){cg();cmiss()})});
   $("#ds").onclick=function(){chordEditor(null,cg,true)};
-  cg();
+  cg();cmiss();
 }
 /* repertórios */
 function repById(id){return (S.reps||[]).filter(function(r){return r.id===id})[0]}
@@ -845,6 +911,7 @@ $("#tm").onclick=function(){var t=themeNow()==="dark"?"light":"dark";document.do
 themeIcon();
 $("#mb").onclick=function(){document.body.classList.add("mo")};
 $("#sc").onclick=function(){document.body.classList.remove("mo")};
+$("#bkp").onclick=function(e){e.preventDefault();document.body.classList.remove("mo");backupSheet()};
 $("#vn").textContent="ℹ Versão "+APP_V+" · Novidades";
 $("#vn").onclick=function(e){e.preventDefault();document.body.classList.remove("mo");whatsNew()};
 $("#rcv").onclick=function(e){e.preventDefault();document.body.classList.remove("mo");receiveSheet("")};
@@ -854,6 +921,6 @@ try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(function(){});
 })();
 </script>
-<script type="module" src="cloud.js"></script>
+<script type="module" src="cloud.js?v=1.5"></script>
 </body>
 </html>
