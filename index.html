@@ -128,6 +128,8 @@ select{width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--li
 .vf:has(iframe) .plb{display:none}
 .vb{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px}
 .vid.pin .vf{position:fixed;inset:auto;top:calc(62px + env(safe-area-inset-top,0px));right:12px;width:min(58vw,320px);aspect-ratio:16/9;z-index:7;border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.45)}
+.tg{display:flex;gap:10px;align-items:flex-start;margin:6px 0;font-size:14px;color:var(--mut);cursor:pointer;font-weight:400}
+.tg input{width:20px;height:20px;padding:0;flex:none;margin-top:1px}
 </style>
 </head>
 <body>
@@ -138,6 +140,8 @@ select{width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--li
 <script>
 (function(){
 var CHANGELOG=[
+ {v:"1.7",d:"19/11/2026",n:[
+  "Vídeos: nova opção Usar minha conta do YouTube nos players (na seção Vídeos da música). Ela troca o player do modo de privacidade para o player normal, que pode usar a sessão do YouTube do navegador, para tentar fazer o Premium valer. A escolha fica guardada no aparelho."]},
  {v:"1.6",d:"19/11/2026",n:[
   "Player do YouTube dentro do app: os links colados na música viram vídeos na tela da música, com toque para reproduzir. Aceita links youtu.be, youtube.com (watch, shorts, live, embed) e o tempo de início (por exemplo, t=1m30s).",
   "Botão Fixar no topo: mantém o vídeo flutuando no canto da tela enquanto você rola a letra e as cifras.",
@@ -598,6 +602,7 @@ function backupSheet(){
 }
 
 /* YouTube */
+function ytHost(){try{return localStorage.getItem("cavaco-yta")==="1"?"www.youtube.com":"www.youtube-nocookie.com"}catch(e){return "www.youtube-nocookie.com"}}
 function ytId(u){
   try{
     var x=new URL(u),hn=x.hostname.replace(/^(www\.|m\.|music\.)/,""),p=x.pathname,v="",l=x.searchParams.get("list"),m;
@@ -609,8 +614,8 @@ function ytId(u){
     var t=x.searchParams.get("t")||x.searchParams.get("start")||"",st=0;
     if(/^\d+$/.test(t))st=+t;else if(m=/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?$/.exec(t))st=(+m[1]||0)*3600+(+m[2]||0)*60+(+m[3]||0);
     var lo=l&&/^[\w-]+$/.test(l)?l:"";
-    if(/^[\w-]{6,20}$/.test(v))return {id:v,src:"https://www.youtube-nocookie.com/embed/"+v+"?rel=0&playsinline=1&autoplay=1"+(st?"&start="+st:"")+(lo?"&list="+lo:""),th:"https://i.ytimg.com/vi/"+v+"/hqdefault.jpg"};
-    if(lo&&hn!=="youtu.be")return {id:"",src:"https://www.youtube-nocookie.com/embed/videoseries?list="+lo+"&rel=0&playsinline=1&autoplay=1",th:""};
+    if(/^[\w-]{6,20}$/.test(v))return {id:v,src:"https://"+ytHost()+"/embed/"+v+"?rel=0&playsinline=1&autoplay=1"+(st?"&start="+st:"")+(lo?"&list="+lo:""),th:"https://i.ytimg.com/vi/"+v+"/hqdefault.jpg"};
+    if(lo&&hn!=="youtu.be")return {id:"",src:"https://"+ytHost()+"/embed/videoseries?list="+lo+"&rel=0&playsinline=1&autoplay=1",th:""};
   }catch(e){}
   return null;
 }
@@ -658,7 +663,7 @@ function viewSong(s){
   app.innerHTML='<a class="back" href="#">‹ Todas as músicas</a><h1 style="margin:8px 0 2px">'+esc(s.title)+'</h1><div class="mut">'+esc(s.artist||"")+'</div>'
    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px"><span class="mut">Toque em uma cifra para ver o desenho no cavaquinho.</span><span style="display:flex;gap:8px;flex:none"><button class="btn o" id="shs" style="padding:8px 14px;font-size:14px">↗ Compartilhar</button><a class="btn o" href="#e-'+s.id+'" style="padding:8px 14px;font-size:14px">✎ Editar</a></span></div>'
    +'<div class="cifra" id="cf">'+renderCifra(s.text||"")+'</div><div class="asb"><button class="ib" id="ap" aria-label="Rolagem automática">▶</button><span class="mut">lento</span><input type="range" id="av2" min="1" max="10" value="'+as.v+'"><span class="mut">rápido</span></div>'
-   +(vids?'<h2 style="font-size:18px;margin-top:20px">Vídeos</h2>'+vids:'');
+   +(vids?'<h2 style="font-size:18px;margin-top:20px">Vídeos</h2><label class="tg"><input type="checkbox" id="yta"'+(ytHost()==="www.youtube.com"?" checked":"")+'><span>Usar minha conta do YouTube nos players (para o Premium valer)</span></label>'+(ytHost()==="www.youtube.com"?'<p class="mut" style="margin:0 0 6px;font-size:13px">Os vídeos deixam o modo de privacidade e usam a sessão do YouTube deste navegador. Se ainda aparecerem anúncios, use o botão YouTube ↗.</p>':'')+vids:'');
   $("#cf").addEventListener("click",function(e){var c=e.target.closest(".c");if(c)chordView(c.dataset.c,s,function(){route()},+c.dataset.o)});
   $("#shs").onclick=function(){
     var c={};chordNames(s.text||"").forEach(function(n){if(vars(n).length)c[n]=vars(n)});
@@ -670,6 +675,8 @@ function viewSong(s){
     [].forEach.call(app.querySelectorAll(".vid.pin"),function(x){x.classList.remove("pin");x.querySelector("[data-pin]").textContent="Fixar no topo"});
     if(on){v.classList.add("pin");b.textContent="Soltar";var f=v.querySelector(".vf");if(!f.querySelector("iframe"))ytPlay(f)}
   }});
+  var ya=$("#yta");
+  if(ya)ya.onchange=function(){try{localStorage.setItem("cavaco-yta",ya.checked?"1":"0")}catch(e){}var y=window.scrollY;route();window.scrollTo(0,y)};
   $("#av2").oninput=function(){as.v=+this.value;try{localStorage.setItem("cavaco-as",as.v)}catch(e){}};
   $("#ap").onclick=function(){
     if(as.on){asStop();return}
