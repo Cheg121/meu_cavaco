@@ -119,6 +119,15 @@ select{width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--li
 .asb .ib{font-size:20px;color:var(--acc)}
 .asb input{width:110px;padding:0;border:0;background:none}
 .code{font:700 28px "DM Mono",monospace;letter-spacing:.15em;color:var(--chord);text-align:center}
+.vid{margin:12px 0}
+.vph{position:relative;aspect-ratio:16/9;background:#000;border-radius:14px;overflow:hidden}
+.vf{position:absolute;inset:0;cursor:pointer;background:#111}
+.vf img{width:100%;height:100%;object-fit:cover;display:block;opacity:.85}
+.vf iframe{width:100%;height:100%;border:0;display:block}
+.plb{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:64px;height:64px;border-radius:50%;border:0;background:rgba(0,0,0,.65);color:#fff;font-size:26px;pointer-events:none}
+.vf:has(iframe) .plb{display:none}
+.vb{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px}
+.vid.pin .vf{position:fixed;inset:auto;top:calc(62px + env(safe-area-inset-top,0px));right:12px;width:min(58vw,320px);aspect-ratio:16/9;z-index:7;border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.45)}
 </style>
 </head>
 <body>
@@ -129,6 +138,10 @@ select{width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--li
 <script>
 (function(){
 var CHANGELOG=[
+ {v:"1.6",d:"19/11/2026",n:[
+  "Player do YouTube dentro do app: os links colados na música viram vídeos na tela da música, com toque para reproduzir. Aceita links youtu.be, youtube.com (watch, shorts, live, embed) e o tempo de início (por exemplo, t=1m30s).",
+  "Botão Fixar no topo: mantém o vídeo flutuando no canto da tela enquanto você rola a letra e as cifras.",
+  "Na edição da música, o app mostra quantos links foram reconhecidos como vídeos do YouTube."]},
  {v:"1.5",d:"17/11/2026",n:[
   "Corrigido: o dicionário de acordes e os repertórios podiam sumir ao entrar com a conta em outro aparelho. Agora cada acorde e cada repertório sincroniza individualmente, e nada é apagado na nuvem enquanto o aparelho não confirmar o estado do servidor.",
   "Recuperação: ao abrir esta versão, o app tenta recuperar acordes e repertórios de cópias antigas guardadas no aparelho e na conta, e avisa quando encontra algo.",
@@ -584,6 +597,31 @@ function backupSheet(){
   }});
 }
 
+/* YouTube */
+function ytId(u){
+  try{
+    var x=new URL(u),hn=x.hostname.replace(/^(www\.|m\.|music\.)/,""),p=x.pathname,v="",l=x.searchParams.get("list"),m;
+    if(hn==="youtu.be")v=p.slice(1).split("/")[0];
+    else if(hn==="youtube.com"||hn==="youtube-nocookie.com"){
+      if(p==="/watch")v=x.searchParams.get("v")||"";
+      else if(m=/^\/(shorts|embed|live|v)\/([\w-]+)/.exec(p))v=m[2];
+    }else return null;
+    var t=x.searchParams.get("t")||x.searchParams.get("start")||"",st=0;
+    if(/^\d+$/.test(t))st=+t;else if(m=/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?$/.exec(t))st=(+m[1]||0)*3600+(+m[2]||0)*60+(+m[3]||0);
+    var lo=l&&/^[\w-]+$/.test(l)?l:"";
+    if(/^[\w-]{6,20}$/.test(v))return {id:v,src:"https://www.youtube-nocookie.com/embed/"+v+"?rel=0&playsinline=1&autoplay=1"+(st?"&start="+st:"")+(lo?"&list="+lo:""),th:"https://i.ytimg.com/vi/"+v+"/hqdefault.jpg"};
+    if(lo&&hn!=="youtu.be")return {id:"",src:"https://www.youtube-nocookie.com/embed/videoseries?list="+lo+"&rel=0&playsinline=1&autoplay=1",th:""};
+  }catch(e){}
+  return null;
+}
+function vidCard(y,u,i){
+  return '<div class="vid"><div class="vph"><div class="vf" data-src="'+esc(y.src)+'">'+(y.th?'<img src="'+esc(y.th)+'" alt="" loading="lazy">':'')+'<button class="plb" tabindex="-1" aria-hidden="true">▶</button></div></div>'
+   +'<div class="vb"><span class="mut">Vídeo '+(i+1)+'</span><span style="display:flex;gap:8px"><button class="btn o" data-pin style="padding:6px 12px;font-size:13px">Fixar no topo</button><a class="btn o" href="'+esc(u)+'" target="_blank" rel="noopener" style="padding:6px 12px;font-size:13px">YouTube ↗</a></span></div></div>';
+}
+function ytPlay(f){
+  f.innerHTML='<iframe src="'+esc(f.dataset.src)+'" title="Vídeo do YouTube" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>';
+}
+
 /* telas */
 function viewList(f){
   fav=f;
@@ -616,7 +654,7 @@ function res(){
 }
 function find(id){return S.songs.filter(function(s){return s.id===id})[0]}
 function viewSong(s){
-  var vids=(s.links||[]).map(function(u,i){return '<a class="yt" href="'+esc(u)+'" target="_blank" rel="noopener">▶ Vídeo '+(i+1)+' <span class="mut">'+esc(u.replace(/^https?:\/\/(www\.)?/,""))+'</span></a>'}).join("");
+  var vids=(s.links||[]).map(function(u,i){var y=ytId(u);return y?vidCard(y,u,i):'<a class="yt" href="'+esc(u)+'" target="_blank" rel="noopener">▶ Vídeo '+(i+1)+' <span class="mut">'+esc(u.replace(/^https?:\/\/(www\.)?/,""))+'</span></a>'}).join("");
   app.innerHTML='<a class="back" href="#">‹ Todas as músicas</a><h1 style="margin:8px 0 2px">'+esc(s.title)+'</h1><div class="mut">'+esc(s.artist||"")+'</div>'
    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px"><span class="mut">Toque em uma cifra para ver o desenho no cavaquinho.</span><span style="display:flex;gap:8px;flex:none"><button class="btn o" id="shs" style="padding:8px 14px;font-size:14px">↗ Compartilhar</button><a class="btn o" href="#e-'+s.id+'" style="padding:8px 14px;font-size:14px">✎ Editar</a></span></div>'
    +'<div class="cifra" id="cf">'+renderCifra(s.text||"")+'</div><div class="asb"><button class="ib" id="ap" aria-label="Rolagem automática">▶</button><span class="mut">lento</span><input type="range" id="av2" min="1" max="10" value="'+as.v+'"><span class="mut">rápido</span></div>'
@@ -626,6 +664,12 @@ function viewSong(s){
     var c={};chordNames(s.text||"").forEach(function(n){if(vars(n).length)c[n]=vars(n)});
     shareSheet("song",{t:s.title,a:s.artist||"",x:s.text||"",l:s.links||[],pv:s.pv||{},c:c},s.title);
   };
+  [].forEach.call(app.querySelectorAll(".vf[data-src]"),function(f){f.addEventListener("click",function(){if(!f.querySelector("iframe"))ytPlay(f)})});
+  [].forEach.call(app.querySelectorAll("[data-pin]"),function(b){b.onclick=function(){
+    var v=b.closest(".vid"),on=!v.classList.contains("pin");
+    [].forEach.call(app.querySelectorAll(".vid.pin"),function(x){x.classList.remove("pin");x.querySelector("[data-pin]").textContent="Fixar no topo"});
+    if(on){v.classList.add("pin");b.textContent="Soltar";var f=v.querySelector(".vf");if(!f.querySelector("iframe"))ytPlay(f)}
+  }});
   $("#av2").oninput=function(){as.v=+this.value;try{localStorage.setItem("cavaco-as",as.v)}catch(e){}};
   $("#ap").onclick=function(){
     if(as.on){asStop();return}
@@ -647,6 +691,7 @@ function viewEdit(s0){
    +'<div id="vz" style="display:none"></div>'
    +'<label>Acordes desta música</label><div class="mut">Toque em um acorde para escolher a variação do dicionário.</div><div id="ch"></div>'
    +'<label for="l">Links do YouTube (um por linha)</label><textarea id="l" rows="3" placeholder="https://youtu.be/...">'+esc((s.links||[]).join("\n"))+'</textarea>'
+   +'<div class="mut" id="lk" style="margin-top:6px"></div>'
    +'<div class="fbar"><p id="er" style="color:#C0392B;margin:0 0 6px"></p><div class="fr"><button class="btn" id="sv">Salvar</button>'+(isNew?'':'<button class="btn d" id="dl">Excluir</button>')+'</div></div>';
   function chips(){
     var N=chordNames($("#x").value);
@@ -664,6 +709,11 @@ function viewEdit(s0){
   function ser(){var o=[];M.forEach(function(m){if(m.c.trim()!=="")o.push(m.c.replace(/\s+$/,""));if(m.l!==null)o.push(m.l)});return o.join("\n")}
   function draft(){try{localStorage.setItem("cavaco-draft",JSON.stringify({id:s.id,isNew:isNew,t:$("#t").value,a:$("#a").value,x:ta.value,l:$("#l").value,pv:s.pv,at:Date.now()}))}catch(e){}}
   ["#t","#a","#x","#l"].forEach(function(q){$(q).addEventListener("input",draft)});
+  function lk(){
+    var L=$("#l").value.split("\n").map(function(u){return u.trim()}).filter(function(u){return /^https?:\/\//.test(u)}),n=L.filter(function(u){return ytId(u)}).length;
+    $("#lk").textContent=L.length?n+" vídeo(s) do YouTube reconhecido(s)"+(L.length>n?" · "+(L.length-n)+" link(s) comum(ns)":"")+". Eles viram player na tela da música.":"Cole um link do YouTube por linha: o vídeo vira um player na tela da música.";
+  }
+  $("#l").addEventListener("input",lk);lk();
   $(".back").addEventListener("click",function(){try{localStorage.removeItem("cavaco-draft")}catch(e){}});
   var dd=$("#dd");if(dd)dd.onclick=function(){try{localStorage.removeItem("cavaco-draft")}catch(e){}route()};
   function commit(){ta.value=ser();chips();draw()}
